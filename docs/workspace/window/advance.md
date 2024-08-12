@@ -1,0 +1,1 @@
+# Window (With WSL2 and linux applications)

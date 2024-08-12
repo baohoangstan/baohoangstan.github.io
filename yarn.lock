@@ -1461,7 +1461,7 @@
     "@docusaurus/utils-validation" "3.5.1"
     tslib "^2.6.0"
 
-"@docusaurus/plugin-google-gtag@3.5.1", "@docusaurus/plugin-google-gtag@^3.5.1":
+"@docusaurus/plugin-google-gtag@3.5.1":
   version "3.5.1"
   resolved "https://registry.yarnpkg.com/@docusaurus/plugin-google-gtag/-/plugin-google-gtag-3.5.1.tgz#81bc5075c99e3898d17684396379027b22116a7e"
   integrity sha512-jxBtLBPMv9BJXPXrwJSs69qYcHP/evT1NkVza2yOai7wi5r3E1tVm0bAxdciWitpM0dgS/HDa30qXE7vA1NRDg==
