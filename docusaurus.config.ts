@@ -50,7 +50,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/baohoangstan/baohoangstan.github.io',
+            'https://github.com/baohoangstan/baohoangstan.github.io/blob/main',
         },
         blog: {
           showReadingTime: true,
