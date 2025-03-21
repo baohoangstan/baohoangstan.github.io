@@ -5,4 +5,4 @@ authors: [baochill]
 tags: [intro]
 ---
 
-This place is for practicing and learning English.
+Hi there! 2025.
