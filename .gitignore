@@ -21,4 +21,5 @@ yarn-error.log*
 
 # AI
 .claude
-CLAUDE.md
+.opencode
+.omo
