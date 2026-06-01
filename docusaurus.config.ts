@@ -92,6 +92,17 @@ const config: Config = {
           "https://github.com/baohoangstan/baohoangstan.github.io/blob/main",
       },
     ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "tools",
+        path: "tools",
+        routeBasePath: "tools",
+        sidebarPath: "./sidebars.ts",
+        editUrl:
+          "https://github.com/baohoangstan/baohoangstan.github.io/blob/main",
+      },
+    ],
   ],
 
   themeConfig: {
@@ -105,6 +116,13 @@ const config: Config = {
       },
       items: [
         { to: "/blog", label: "Blog", position: "left" },
+        {
+          type: "docSidebar",
+          sidebarId: "toolsSidebar",
+          position: "left",
+          label: "Tools",
+          docsPluginId: "tools",
+        },
         {
           type: "docSidebar",
           sidebarId: "docSidebar",
