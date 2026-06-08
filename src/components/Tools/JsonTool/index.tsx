@@ -6,8 +6,10 @@ export default function JsonTool(): JSX.Element {
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [activeBtn, setActiveBtn] = useState<string | null>(null);
 
   function handleFormat(): void {
+    setActiveBtn('format');
     setError('');
     setSuccess('');
     try {
@@ -21,6 +23,7 @@ export default function JsonTool(): JSX.Element {
   }
 
   function handleMinify(): void {
+    setActiveBtn('minify');
     setError('');
     setSuccess('');
     try {
@@ -34,6 +37,7 @@ export default function JsonTool(): JSX.Element {
   }
 
   function handleUnwrap(): void {
+    setActiveBtn('unwrap');
     setError('');
     setSuccess('');
     try {
@@ -52,6 +56,7 @@ export default function JsonTool(): JSX.Element {
   }
 
   function handleWrap(): void {
+    setActiveBtn('wrap');
     setError('');
     setSuccess('');
     setOutput(JSON.stringify(input));
@@ -59,6 +64,7 @@ export default function JsonTool(): JSX.Element {
   }
 
   function handleValidate(): void {
+    setActiveBtn('validate');
     setError('');
     setSuccess('');
     setOutput('');
@@ -93,41 +99,22 @@ export default function JsonTool(): JSX.Element {
       </div>
 
       <div className={styles.buttonRow}>
-        <button
-          type="button"
-          className="button button--primary button--sm"
-          onClick={handleFormat}
-        >
-          Format
-        </button>
-        <button
-          type="button"
-          className="button button--outline button--primary button--sm"
-          onClick={handleMinify}
-        >
-          Minify
-        </button>
-        <button
-          type="button"
-          className="button button--outline button--primary button--sm"
-          onClick={handleUnwrap}
-        >
-          Unwrap
-        </button>
-        <button
-          type="button"
-          className="button button--outline button--primary button--sm"
-          onClick={handleWrap}
-        >
-          Wrap
-        </button>
-        <button
-          type="button"
-          className="button button--outline button--primary button--sm"
-          onClick={handleValidate}
-        >
-          Validate
-        </button>
+        {([
+          ['format', 'Format', handleFormat],
+          ['minify', 'Minify', handleMinify],
+          ['unwrap', 'Unwrap', handleUnwrap],
+          ['wrap', 'Wrap', handleWrap],
+          ['validate', 'Validate', handleValidate],
+        ] as [string, string, () => void][]).map(([id, label, handler]) => (
+          <button
+            key={id}
+            type="button"
+            className={`button button--primary button--sm${activeBtn === id ? '' : ' button--outline'}`}
+            onClick={handler}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && <p className={styles.errorMsg} role="alert">{error}</p>}
