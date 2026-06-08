@@ -33,39 +33,29 @@ export default function JsonTool(): JSX.Element {
     }
   }
 
-  function handleParse(): void {
+  function handleUnwrap(): void {
     setError('');
     setSuccess('');
     try {
-      let parsed = JSON.parse(input);
-      let unwrapped = false;
-      if (typeof parsed === 'string') {
-        try {
-          parsed = JSON.parse(parsed);
-          unwrapped = true;
-        } catch {
-          // not a JSON-encoded string, keep as-is
-        }
+      const parsed = JSON.parse(input);
+      if (typeof parsed !== 'string') {
+        setOutput('');
+        setError('Input is not a JSON-encoded string.');
+        return;
       }
-      setOutput(parsed === null ? 'null' : JSON.stringify(parsed, null, 2));
-      setSuccess(unwrapped ? 'Parsed successfully (auto-unwrapped JSON string).' : 'Parsed successfully.');
+      setOutput(parsed);
+      setSuccess('Unwrapped successfully.');
     } catch (e) {
       setOutput('');
       setError((e as Error).message);
     }
   }
 
-  function handleStringify(): void {
+  function handleWrap(): void {
     setError('');
     setSuccess('');
-    try {
-      const parsed = JSON.parse(input);
-      setOutput(JSON.stringify(parsed));
-      setSuccess('Stringified successfully.');
-    } catch (e) {
-      setOutput('');
-      setError((e as Error).message);
-    }
+    setOutput(JSON.stringify(input));
+    setSuccess('Wrapped successfully.');
   }
 
   function handleValidate(): void {
@@ -120,16 +110,16 @@ export default function JsonTool(): JSX.Element {
         <button
           type="button"
           className="button button--outline button--primary button--sm"
-          onClick={handleParse}
+          onClick={handleUnwrap}
         >
-          Parse
+          Unwrap
         </button>
         <button
           type="button"
           className="button button--outline button--primary button--sm"
-          onClick={handleStringify}
+          onClick={handleWrap}
         >
-          Stringify
+          Wrap
         </button>
         <button
           type="button"
