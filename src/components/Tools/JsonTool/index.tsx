@@ -33,6 +33,32 @@ export default function JsonTool(): JSX.Element {
     }
   }
 
+  function handleParse(): void {
+    setError('');
+    setSuccess('');
+    try {
+      const parsed = JSON.parse(input);
+      setOutput(String(parsed === null ? 'null' : JSON.stringify(parsed, null, 2)));
+      setSuccess('Parsed successfully.');
+    } catch (e) {
+      setOutput('');
+      setError((e as Error).message);
+    }
+  }
+
+  function handleStringify(): void {
+    setError('');
+    setSuccess('');
+    try {
+      const parsed = JSON.parse(input);
+      setOutput(JSON.stringify(parsed));
+      setSuccess('Stringified successfully.');
+    } catch (e) {
+      setOutput('');
+      setError((e as Error).message);
+    }
+  }
+
   function handleValidate(): void {
     setError('');
     setSuccess('');
@@ -81,6 +107,20 @@ export default function JsonTool(): JSX.Element {
           onClick={handleMinify}
         >
           Minify
+        </button>
+        <button
+          type="button"
+          className="button button--outline button--primary button--sm"
+          onClick={handleParse}
+        >
+          Parse
+        </button>
+        <button
+          type="button"
+          className="button button--outline button--primary button--sm"
+          onClick={handleStringify}
+        >
+          Stringify
         </button>
         <button
           type="button"
