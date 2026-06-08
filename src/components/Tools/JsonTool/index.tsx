@@ -37,9 +37,18 @@ export default function JsonTool(): JSX.Element {
     setError('');
     setSuccess('');
     try {
-      const parsed = JSON.parse(input);
-      setOutput(String(parsed === null ? 'null' : JSON.stringify(parsed, null, 2)));
-      setSuccess('Parsed successfully.');
+      let parsed = JSON.parse(input);
+      let unwrapped = false;
+      if (typeof parsed === 'string') {
+        try {
+          parsed = JSON.parse(parsed);
+          unwrapped = true;
+        } catch {
+          // not a JSON-encoded string, keep as-is
+        }
+      }
+      setOutput(parsed === null ? 'null' : JSON.stringify(parsed, null, 2));
+      setSuccess(unwrapped ? 'Parsed successfully (auto-unwrapped JSON string).' : 'Parsed successfully.');
     } catch (e) {
       setOutput('');
       setError((e as Error).message);
