@@ -4,6 +4,7 @@ import UrlTool from './UrlTool';
 import UuidTool from './UuidTool';
 import JsonTool from './JsonTool';
 import UlidTool from './UlidTool';
+import SchemaConfigTool from './SchemaConfigTool';
 
 export type ToolDefinition = {
   id: string;
@@ -46,6 +47,12 @@ const toolRegistry: ToolDefinition[] = [
     title: 'ULID Generator',
     description: 'Generate one or more ULIDs — lexicographically sortable, timestamp-based unique identifiers.',
     Component: UlidTool,
+  },
+  {
+    id: 'schema-config',
+    title: 'JSON Schema Config Generator',
+    description: 'Generate JSON configurations for OpenCode and oh-my-openagent (OhMyOpenCode) harnesses with auto-completed model fetch.',
+    Component: SchemaConfigTool,
   },
 ];
 
