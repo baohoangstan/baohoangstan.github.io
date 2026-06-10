@@ -19,6 +19,34 @@
   background: var(--ifm-color-emphasis-100);
 }
 
+.headerRight {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.importBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-color-emphasis-700);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 0.25rem;
+}
+
+.importBtn:hover {
+  background: var(--ifm-color-primary-lightest);
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
 .title {
   margin: 0;
   padding-bottom: 1rem;
@@ -249,6 +277,189 @@
 
 .agentLabel {
   text-transform: capitalize;
+}
+
+/* Section title row with action button */
+.sectionTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.sectionTitleRow .sectionTitle {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.addBtn {
+  padding: 0.35rem 0.75rem;
+  border: 1px dashed var(--ifm-color-primary);
+  background: transparent;
+  color: var(--ifm-color-primary);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.addBtn:hover {
+  background: var(--ifm-color-primary-lightest);
+}
+
+/* Custom provider card */
+.customProviderCard {
+  border-color: var(--ifm-color-warning-dark) !important;
+}
+
+.customBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--ifm-color-warning);
+  color: #000;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  margin-right: 0.5rem;
+}
+
+.customProviderFields {
+  display: flex;
+  flex: 1;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.inlineInput {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 4px;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-color-content);
+}
+
+.inlineInput:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+}
+
+.removeBtn {
+  margin-left: auto;
+  padding: 0 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--ifm-color-danger);
+  font-size: 1.2rem;
+  cursor: pointer;
+  border-radius: 3px;
+  line-height: 1;
+  transition: background 0.15s ease;
+}
+
+.removeBtn:hover {
+  background: var(--ifm-color-danger-contrast-background);
+}
+
+/* Per-model token limits */
+.modelLimitsSection {
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  padding-top: 0.75rem;
+}
+
+.modelLimitsLabel {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.autoHint {
+  font-weight: 400;
+  color: var(--ifm-color-emphasis-500);
+}
+
+.modelLimitsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.modelLimitRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.modelLimitName {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-800);
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.modelLimitInputs {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.limitField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 100px;
+}
+
+.limitField label {
+  font-size: 0.72rem;
+  color: var(--ifm-color-emphasis-600);
+  font-weight: 500;
+}
+
+.limitField input {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 4px;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-color-content);
+}
+
+.limitField input:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+}
+
+/* OMO agent block with fallback */
+.agentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.fallbackInput {
+  font-size: 0.78rem !important;
+  color: var(--ifm-color-emphasis-600) !important;
+  border-color: var(--ifm-color-emphasis-200) !important;
+  border-style: dashed !important;
+}
+
+.fallbackInput::placeholder {
+  font-style: italic;
 }
 
 @media (max-width: 996px) {
