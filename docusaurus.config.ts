@@ -1,6 +1,16 @@
 import { themes as prismThemes } from "prism-react-renderer";
-import type { Config } from "@docusaurus/types";
+import type { Config, Plugin } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
+
+function tailwindPlugin(): Plugin<void> {
+  return {
+    name: 'tailwind-plugin',
+    configurePostCss(postcssOptions: any) {
+      postcssOptions.plugins.push(require('tailwindcss'), require('autoprefixer'));
+      return postcssOptions;
+    },
+  };
+}
 
 const config: Config = {
   title: "Bao Hoang's Blog",
@@ -86,6 +96,7 @@ const config: Config = {
   ],
 
   plugins: [
+    tailwindPlugin,
     [
       "@docusaurus/plugin-content-docs",
       {

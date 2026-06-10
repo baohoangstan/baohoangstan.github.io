@@ -1,6 +1,5 @@
-import clsx from 'clsx';
 import Heading from '@theme/Heading';
-import styles from './styles.module.css';
+import { Card, CardHeader, CardTitle, CardContent } from '@site/src/components/ui/card';
 
 type FeatureItem = {
   title: string;
@@ -38,25 +37,29 @@ const FeatureList: FeatureItem[] = [
   },
 ];
 
-function Feature({title, Svg, description}: FeatureItem) {
+function Feature({ title, Svg, description }: FeatureItem) {
   return (
-    <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
-      </div>
-      <div className="text--center padding-horiz--md">
-        <Heading as="h3">{title}</Heading>
+    <Card className="h-full bg-card hover:shadow-md transition-shadow">
+      <CardHeader className="text-center pb-2">
+        <div className="flex justify-center mb-4">
+          <Svg className="h-32 w-32 text-primary" role="img" />
+        </div>
+        <CardTitle>
+          <Heading as="h3" className="mb-0">{title}</Heading>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="text-center text-muted-foreground">
         <p>{description}</p>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function HomepageFeatures(): JSX.Element {
   return (
-    <section className={styles.features}>
-      <div className="container">
-        <div className="row">
+    <section className="py-16 bg-background">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {FeatureList.map((props, idx) => (
             <Feature key={idx} {...props} />
           ))}
