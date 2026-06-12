@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import styles from './styles.module.css';
+import { Upload, RotateCcw, X, Copy, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import Editor from 'react-simple-code-editor';
+import { Highlight, themes, type PrismTheme } from 'prism-react-renderer';
+import { useColorMode } from '@docusaurus/theme-common';
+import { cn } from '@site/src/lib/utils';
+import { Button } from '@site/src/components/ui/button';
+import { Input } from '@site/src/components/ui/input';
+import { Label } from '@site/src/components/ui/label';
+import { Badge } from '@site/src/components/ui/badge';
+import { MultiSelect } from '@site/src/components/ui/multi-select';
+import { Tabs, TabsList, TabsTrigger } from '@site/src/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@site/src/components/ui/select';
 
 // --- Types ---
 type Provider = {
@@ -10,6 +27,7 @@ type Provider = {
   env: string[];
   models: string[];
   modelLimits?: Record<string, { context?: number; output?: number }>;
+  modelNames?: Record<string, string>;
 };
 
 type ProviderConfig = {
@@ -23,7 +41,27 @@ type ProviderConfig = {
   customId?: string;
   customApi?: string;
   customEnv?: string;
+  customNpm?: string;
+  sourceProviders?: string[];
 };
+
+const DEFAULT_CUSTOM_API = 'https://your-provider-url.com/v1';
+const DEFAULT_CUSTOM_KEY = 'your-key';
+const DEFAULT_CUSTOM_NPM = '@ai-sdk/openai-compatible';
+
+const AI_SDK_OPTIONS: { value: string; label: string }[] = [
+  { value: '@ai-sdk/openai-compatible', label: 'OpenAI Compatible' },
+  { value: '@ai-sdk/openai', label: 'OpenAI' },
+  { value: '@ai-sdk/anthropic', label: 'Anthropic' },
+  { value: '@ai-sdk/google', label: 'Google Generative AI' },
+  { value: '@ai-sdk/google-vertex', label: 'Google Vertex' },
+  { value: '@ai-sdk/amazon-bedrock', label: 'Amazon Bedrock' },
+  { value: '@ai-sdk/azure', label: 'Azure OpenAI' },
+  { value: '@ai-sdk/mistral', label: 'Mistral' },
+  { value: '@ai-sdk/cohere', label: 'Cohere' },
+  { value: '@ai-sdk/groq', label: 'Groq' },
+  { value: '@openrouter/ai-sdk-provider', label: 'OpenRouter' },
+];
 
 type ModelLimitOverride = {
   contextTokens?: string;
@@ -76,34 +114,283 @@ const DEFAULT_PROVIDERS: Record<string, Provider> = {
 const AGENTS = ['sisyphus', 'hephaestus', 'prometheus', 'oracle', 'librarian', 'explore', 'multimodal-looker', 'metis', 'momus', 'atlas'];
 const CATEGORIES = ['visual-engineering', 'ultrabrain', 'deep', 'artistry', 'quick', 'unspecified-low', 'unspecified-high', 'writing'];
 
+type JsonPreviewProps = {
+  value: string;
+  onChange: (next: string) => void;
+  error?: string | null;
+};
+
+function JsonPreview({ value, onChange, error }: JsonPreviewProps) {
+  const { colorMode } = useColorMode();
+  const theme: PrismTheme = colorMode === 'dark' ? themes.vsDark : themes.vsLight;
+  const editorFont =
+    'var(--ifm-font-family-monospace, ui-monospace, SFMono-Regular, Menlo, monospace)';
+
+  const highlight = (code: string) => (
+    <Highlight theme={theme} code={code} language="json">
+      {({ tokens, getLineProps, getTokenProps }) => (
+        <>
+          {tokens.map((line, i) => {
+            const { key: _lk, ...lineProps } = getLineProps({ line });
+            return (
+              <div key={i} {...lineProps}>
+                {line.map((token, k) => {
+                  const { key: _tk, ...tokenProps } = getTokenProps({ token });
+                  return <span key={k} {...tokenProps} />;
+                })}
+              </div>
+            );
+          })}
+        </>
+      )}
+    </Highlight>
+  );
+
+  return (
+    <div
+      className="flex-1 overflow-auto"
+      style={{ background: theme.plain.backgroundColor, color: theme.plain.color }}
+    >
+      <Editor
+        value={value}
+        onValueChange={onChange}
+        highlight={highlight}
+        padding={20}
+        spellCheck={false}
+        textareaClassName="focus:outline-none"
+        style={{
+          fontFamily: editorFont,
+          fontSize: 13,
+          lineHeight: 1.6,
+          minHeight: '100%',
+          caretColor: theme.plain.color,
+        }}
+      />
+      {error && (
+        <div className="sticky bottom-0 flex items-center gap-2 border-t border-destructive/40 bg-destructive/15 px-4 py-2 text-xs text-destructive backdrop-blur">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const STORAGE_KEY = 'schemaConfigTool:v1';
+
+const DEFAULT_CONFIGURED_PROVIDERS: Record<string, ProviderConfig> = {
+  openai: { enabled: true, models: ['gpt-4o', 'gpt-4o-mini'] },
+  anthropic: { enabled: true, models: ['claude-3-5-sonnet-20241022'] },
+};
+const DEFAULT_AGENT_CONFIGS: Record<string, string> = {
+  sisyphus: 'anthropic/claude-3-5-sonnet-20241022',
+  oracle: 'openai/o3-mini',
+};
+const DEFAULT_CATEGORY_CONFIGS: Record<string, string> = {
+  'visual-engineering': 'anthropic/claude-3-5-sonnet-20241022',
+  quick: 'openai/gpt-4o-mini',
+};
+
+type PersistedState = {
+  activeTab?: 'opencode' | 'omo';
+  configuredProviders?: Record<string, ProviderConfig>;
+  defaultModel?: string;
+  smallModel?: string;
+  modelInputs?: Record<string, string>;
+  modelLimitOverrides?: Record<string, ModelLimitOverride>;
+  modelNameOverrides?: Record<string, string>;
+  agentConfigs?: Record<string, string>;
+  agentFallbacks?: Record<string, string>;
+  categoryConfigs?: Record<string, string>;
+  categoryFallbacks?: Record<string, string>;
+};
+
+function loadPersisted(): PersistedState {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as PersistedState) : {};
+  } catch {
+    return {};
+  }
+}
+
+type ValidationResult = { valid: boolean; message: string };
+
+const isPlainObject = (v: unknown): v is Record<string, any> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+function validateOpencodeSchema(root: unknown): ValidationResult {
+  if (!isPlainObject(root)) return { valid: false, message: 'Root must be an object.' };
+  if (root.model !== undefined && typeof root.model !== 'string')
+    return { valid: false, message: '"model" must be a string.' };
+  if (root.small_model !== undefined && typeof root.small_model !== 'string')
+    return { valid: false, message: '"small_model" must be a string.' };
+  if (root.provider !== undefined) {
+    if (!isPlainObject(root.provider)) return { valid: false, message: '"provider" must be an object.' };
+    for (const [pid, prov] of Object.entries(root.provider)) {
+      if (!isPlainObject(prov)) return { valid: false, message: `provider.${pid} must be an object.` };
+      if (prov.models !== undefined && !isPlainObject(prov.models))
+        return { valid: false, message: `provider.${pid}.models must be an object keyed by model id.` };
+      if (isPlainObject(prov.models)) {
+        for (const [mid, model] of Object.entries(prov.models)) {
+          if (!isPlainObject(model)) return { valid: false, message: `provider.${pid}.models.${mid} must be an object.` };
+          if (model.limit !== undefined) {
+            if (!isPlainObject(model.limit))
+              return { valid: false, message: `provider.${pid}.models.${mid}.limit must be an object.` };
+            for (const lk of ['context', 'output', 'input'] as const) {
+              if (model.limit[lk] !== undefined && typeof model.limit[lk] !== 'number')
+                return { valid: false, message: `provider.${pid}.models.${mid}.limit.${lk} must be a number.` };
+            }
+          }
+          if (model.name !== undefined && typeof model.name !== 'string')
+            return { valid: false, message: `provider.${pid}.models.${mid}.name must be a string.` };
+        }
+      }
+      if (prov.env !== undefined && !Array.isArray(prov.env))
+        return { valid: false, message: `provider.${pid}.env must be an array.` };
+    }
+  }
+  return { valid: true, message: 'Matches opencode schema.' };
+}
+
+function validateOmoSchema(root: unknown): ValidationResult {
+  if (!isPlainObject(root)) return { valid: false, message: 'Root must be an object.' };
+  for (const section of ['agents', 'categories'] as const) {
+    if (root[section] === undefined) continue;
+    if (!isPlainObject(root[section])) return { valid: false, message: `"${section}" must be an object.` };
+    for (const [key, cfg] of Object.entries(root[section])) {
+      if (!isPlainObject(cfg)) return { valid: false, message: `${section}.${key} must be an object.` };
+      if (cfg.model !== undefined && typeof cfg.model !== 'string')
+        return { valid: false, message: `${section}.${key}.model must be a string.` };
+      if (cfg.fallback_models !== undefined && !Array.isArray(cfg.fallback_models))
+        return { valid: false, message: `${section}.${key}.fallback_models must be an array.` };
+    }
+  }
+  return { valid: true, message: 'Matches oh-my-opencode schema.' };
+}
+
+function stripJsonc(input: string): string {
+  let out = '';
+  let inString = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    const next = input[i + 1];
+    if (inLineComment) {
+      if (ch === '\n') {
+        inLineComment = false;
+        out += ch;
+      }
+      continue;
+    }
+    if (inBlockComment) {
+      if (ch === '*' && next === '/') {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if (inString) {
+      out += ch;
+      if (ch === '\\') {
+        out += next ?? '';
+        i++;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      out += ch;
+      continue;
+    }
+    if (ch === '/' && next === '/') {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+    if (ch === '/' && next === '*') {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+    out += ch;
+  }
+  return out.replace(/,(\s*[}\]])/g, '$1');
+}
+
+function parseJsonc<T = any>(input: string): T {
+  return JSON.parse(stripJsonc(input)) as T;
+}
+
 export default function SchemaConfigTool() {
-  const [activeTab, setActiveTab] = useState<'opencode' | 'omo'>('opencode');
+  const persistedRef = useRef<PersistedState>(loadPersisted());
+  const persisted = persistedRef.current;
+
+  const [activeTab, setActiveTab] = useState<'opencode' | 'omo'>(persisted.activeTab ?? 'opencode');
   const [providersData, setProvidersData] = useState<Record<string, Provider>>(DEFAULT_PROVIDERS);
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Opencode state
-  const [configuredProviders, setConfiguredProviders] = useState<Record<string, ProviderConfig>>({
-    openai: { enabled: true, models: ['gpt-4o', 'gpt-4o-mini'] },
-    anthropic: { enabled: true, models: ['claude-3-5-sonnet-20241022'] }
-  });
-  const [defaultModel, setDefaultModel] = useState<string>('anthropic/claude-3-5-sonnet-20241022');
-  const [smallModel, setSmallModel] = useState<string>('openai/gpt-4o-mini');
-  const [modelInputs, setModelInputs] = useState<Record<string, string>>({});
+  const [configuredProviders, setConfiguredProviders] = useState<Record<string, ProviderConfig>>(
+    persisted.configuredProviders ?? DEFAULT_CONFIGURED_PROVIDERS
+  );
+  const [defaultModel, setDefaultModel] = useState<string>(persisted.defaultModel ?? 'anthropic/claude-3-5-sonnet-20241022');
+  const [smallModel, setSmallModel] = useState<string>(persisted.smallModel ?? 'openai/gpt-4o-mini');
+  const [modelInputs, setModelInputs] = useState<Record<string, string>>(persisted.modelInputs ?? {});
   // per-model token limit overrides: { "providerId/modelId": { contextTokens, maxTokens } }
-  const [modelLimitOverrides, setModelLimitOverrides] = useState<Record<string, ModelLimitOverride>>({});
+  const [modelLimitOverrides, setModelLimitOverrides] = useState<Record<string, ModelLimitOverride>>(persisted.modelLimitOverrides ?? {});
+  // per-model display-name overrides: { "providerId/modelId": name }
+  const [modelNameOverrides, setModelNameOverrides] = useState<Record<string, string>>(persisted.modelNameOverrides ?? {});
+
+  const [providerToAdd, setProviderToAdd] = useState<string>('');
+
+  const [fetchedModels, setFetchedModels] = useState<Record<string, string[]>>({});
+  const [fetchStatus, setFetchStatus] = useState<Record<string, { loading: boolean; error?: string }>>({});
 
   // OMO state
-  const [agentConfigs, setAgentConfigs] = useState<Record<string, string>>({
-    sisyphus: 'anthropic/claude-3-5-sonnet-20241022',
-    oracle: 'openai/o3-mini'
-  });
-  const [agentFallbacks, setAgentFallbacks] = useState<Record<string, string>>({});
-  const [categoryConfigs, setCategoryConfigs] = useState<Record<string, string>>({
-    'visual-engineering': 'anthropic/claude-3-5-sonnet-20241022',
-    'quick': 'openai/gpt-4o-mini'
-  });
-  const [categoryFallbacks, setCategoryFallbacks] = useState<Record<string, string>>({});
+  const [agentConfigs, setAgentConfigs] = useState<Record<string, string>>(persisted.agentConfigs ?? DEFAULT_AGENT_CONFIGS);
+  const [agentFallbacks, setAgentFallbacks] = useState<Record<string, string>>(persisted.agentFallbacks ?? {});
+  const [categoryConfigs, setCategoryConfigs] = useState<Record<string, string>>(persisted.categoryConfigs ?? DEFAULT_CATEGORY_CONFIGS);
+  const [categoryFallbacks, setCategoryFallbacks] = useState<Record<string, string>>(persisted.categoryFallbacks ?? {});
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const data: PersistedState = {
+      activeTab,
+      configuredProviders,
+      defaultModel,
+      smallModel,
+      modelInputs,
+      modelLimitOverrides,
+      modelNameOverrides,
+      agentConfigs,
+      agentFallbacks,
+      categoryConfigs,
+      categoryFallbacks,
+    };
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      /* ignore quota / serialization errors */
+    }
+  }, [
+    activeTab,
+    configuredProviders,
+    defaultModel,
+    smallModel,
+    modelInputs,
+    modelLimitOverrides,
+    modelNameOverrides,
+    agentConfigs,
+    agentFallbacks,
+    categoryConfigs,
+    categoryFallbacks,
+  ]);
 
   // Fetch models.dev
   useEffect(() => {
@@ -117,6 +404,7 @@ export default function SchemaConfigTool() {
           for (const [key, val] of Object.entries(data)) {
             const typedVal = val as any;
             const modelLimits: Record<string, { context?: number; output?: number }> = {};
+            const modelNames: Record<string, string> = {};
             if (typedVal.models) {
               for (const [modelId, modelData] of Object.entries(typedVal.models)) {
                 const md = modelData as any;
@@ -126,6 +414,7 @@ export default function SchemaConfigTool() {
                     output: md.limit.output,
                   };
                 }
+                if (md?.name) modelNames[modelId] = md.name;
               }
             }
             parsedProviders[key] = {
@@ -136,6 +425,7 @@ export default function SchemaConfigTool() {
               env: typedVal.env || [],
               models: typedVal.models ? Object.keys(typedVal.models) : [],
               modelLimits,
+              modelNames,
             };
           }
 
@@ -157,14 +447,14 @@ export default function SchemaConfigTool() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const json = JSON.parse(ev.target?.result as string);
+        const json = parseJsonc(ev.target?.result as string);
         if (activeTab === 'opencode') {
           hydrateOpencodeState(json);
         } else {
           hydrateOmoState(json);
         }
       } catch {
-        alert('Invalid JSON file.');
+        alert('Invalid JSON/JSONC file.');
       }
     };
     reader.readAsText(file);
@@ -178,19 +468,59 @@ export default function SchemaConfigTool() {
     if (json.provider) {
       const newConfigured: Record<string, ProviderConfig> = {};
       const newModelInputs: Record<string, string> = {};
+      const newLimitOverrides: Record<string, ModelLimitOverride> = {};
+      const newNameOverrides: Record<string, string> = {};
       for (const [id, cfg] of Object.entries(json.provider)) {
         const c = cfg as any;
+        const opts = c.options || {};
+        const apiKey = c.apiKey ?? c.api_key ?? opts.apiKey ?? opts.api_key ?? '';
+        const baseURL = c.baseURL ?? c.base_url ?? opts.baseURL ?? opts.base_url ?? '';
+        const env = Array.isArray(c.env) ? c.env : [];
+        const models = Array.isArray(c.models)
+          ? c.models
+          : c.models && typeof c.models === 'object'
+            ? Object.keys(c.models)
+            : [];
+        const isCustom = !providersData[id];
+
+        if (c.models && typeof c.models === 'object' && !Array.isArray(c.models)) {
+          for (const [modelId, modelData] of Object.entries(c.models)) {
+            const md = modelData as any;
+            const key = `${id}/${modelId}`;
+            if (md?.name) newNameOverrides[key] = md.name;
+            if (md?.limit?.context !== undefined || md?.limit?.output !== undefined) {
+              newLimitOverrides[key] = {
+                ...(md.limit?.context !== undefined ? { contextTokens: String(md.limit.context) } : {}),
+                ...(md.limit?.output !== undefined ? { maxTokens: String(md.limit.output) } : {}),
+              };
+            }
+          }
+        }
+
         newConfigured[id] = {
           enabled: true,
-          apiKey: c.apiKey || c.api_key || '',
-          baseURL: c.baseURL || c.base_url || '',
+          apiKey,
+          baseURL: isCustom ? '' : baseURL,
           timeout: c.timeout,
-          models: Array.isArray(c.models) ? c.models : [],
+          models,
+          ...(isCustom
+            ? {
+                isCustom: true,
+                customId: id,
+                customName: id,
+                customApi: baseURL,
+                customEnv: env[0] || '',
+                customNpm: c.npm || DEFAULT_CUSTOM_NPM,
+                sourceProviders: [],
+              }
+            : {}),
         };
-        newModelInputs[id] = Array.isArray(c.models) ? c.models.join(', ') : '';
+        newModelInputs[id] = models.join(', ');
       }
       setConfiguredProviders(newConfigured);
       setModelInputs(newModelInputs);
+      setModelLimitOverrides(newLimitOverrides);
+      setModelNameOverrides(newNameOverrides);
     }
   };
 
@@ -219,12 +549,8 @@ export default function SchemaConfigTool() {
     }
   };
 
-  // --- Custom providers ---
-  const [customProviderCount, setCustomProviderCount] = useState(0);
-
   const addCustomProvider = () => {
     const id = `custom_${Date.now()}`;
-    setCustomProviderCount(c => c + 1);
     setConfiguredProviders(prev => ({
       ...prev,
       [id]: {
@@ -232,9 +558,12 @@ export default function SchemaConfigTool() {
         isCustom: true,
         customId: id,
         customName: '',
-        customApi: '',
+        customApi: DEFAULT_CUSTOM_API,
         customEnv: '',
+        customNpm: DEFAULT_CUSTOM_NPM,
+        apiKey: DEFAULT_CUSTOM_KEY,
         models: [],
+        sourceProviders: ['anthropic', 'openai'],
       }
     }));
     setModelInputs(prev => ({ ...prev, [id]: '' }));
@@ -254,15 +583,32 @@ export default function SchemaConfigTool() {
   };
 
   // Helpers for Opencode Config
-  const handleProviderToggle = (providerId: string) => {
+  const addProvider = (providerId: string) => {
+    if (!providerId) return;
     setConfiguredProviders(prev => ({
       ...prev,
       [providerId]: {
         ...prev[providerId],
-        enabled: !prev[providerId]?.enabled,
-        models: prev[providerId]?.models || providersData[providerId]?.models?.slice(0, 5) || []
-      }
+        enabled: true,
+        models: prev[providerId]?.models?.length
+          ? prev[providerId].models
+          : providersData[providerId]?.models?.slice(0, 5) || [],
+      },
     }));
+    setProviderToAdd('');
+  };
+
+  const removeProvider = (providerId: string) => {
+    setConfiguredProviders(prev => {
+      const next = { ...prev };
+      delete next[providerId];
+      return next;
+    });
+    setModelInputs(prev => {
+      const next = { ...prev };
+      delete next[providerId];
+      return next;
+    });
   };
 
   const handleProviderConfigChange = (providerId: string, field: keyof ProviderConfig, value: any) => {
@@ -275,9 +621,84 @@ export default function SchemaConfigTool() {
     }));
   };
 
+  const setProviderModels = (providerId: string, models: string[]) => {
+    handleProviderConfigChange(providerId, 'models', models);
+    setModelInputs(prev => ({ ...prev, [providerId]: models.join(', ') }));
+  };
+
+  const buildModelOptions = (available?: string[], selected?: string[]) => {
+    const seen = new Set<string>();
+    const options: { value: string }[] = [];
+    for (const m of [...(available || []), ...(selected || [])]) {
+      if (!seen.has(m)) {
+        seen.add(m);
+        options.push({ value: m });
+      }
+    }
+    return options;
+  };
+
+  const modelsFromProviders = (sourceProviders?: string[]): string[] => {
+    const seen = new Set<string>();
+    const models: string[] = [];
+    for (const pid of sourceProviders || []) {
+      for (const m of providersData[pid]?.models || []) {
+        if (!seen.has(m)) {
+          seen.add(m);
+          models.push(m);
+        }
+      }
+    }
+    return models;
+  };
+
+  const setCustomSourceProviders = (id: string, sources: string[]) => {
+    handleProviderConfigChange(id, 'sourceProviders', sources);
+  };
+
+  const fetchCustomProviderModels = async (id: string) => {
+    const config = configuredProviders[id];
+    const base = (config?.customApi || '').replace(/\/+$/, '');
+    if (!base) {
+      setFetchStatus(prev => ({ ...prev, [id]: { loading: false, error: 'Set a Base URL first.' } }));
+      return;
+    }
+    setFetchStatus(prev => ({ ...prev, [id]: { loading: true } }));
+    try {
+      const headers: Record<string, string> = {};
+      if (config?.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+      const res = await fetch(`${base}/models`, { headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+      const ids = Array.from(
+        new Set(
+          list
+            .map(m => (typeof m === 'string' ? m : m?.id))
+            .filter((m): m is string => typeof m === 'string' && m.length > 0)
+        )
+      );
+      if (ids.length === 0) throw new Error('No models in response.');
+      setFetchedModels(prev => ({ ...prev, [id]: ids }));
+      setFetchStatus(prev => ({ ...prev, [id]: { loading: false } }));
+    } catch (e) {
+      setFetchStatus(prev => ({ ...prev, [id]: { loading: false, error: (e as Error).message } }));
+    }
+  };
+
   // Model limit helpers
+  const resolveModelDataProvider = (providerId: string, modelId: string): string | undefined => {
+    if (providersData[providerId]?.models?.includes(modelId)) return providerId;
+    const config = configuredProviders[providerId];
+    if (config?.isCustom) {
+      return config.sourceProviders?.find(pid => providersData[pid]?.models?.includes(modelId));
+    }
+    return undefined;
+  };
+
   const getModelLimit = (providerId: string, modelId: string, field: 'context' | 'output'): number | undefined => {
-    return providersData[providerId]?.modelLimits?.[modelId]?.[field];
+    const dataProvider = resolveModelDataProvider(providerId, modelId);
+    return dataProvider ? providersData[dataProvider]?.modelLimits?.[modelId]?.[field] : undefined;
   };
 
   const getOrAutoLimitValue = (providerId: string, modelId: string, field: 'contextTokens' | 'maxTokens'): string => {
@@ -296,27 +717,158 @@ export default function SchemaConfigTool() {
     }));
   };
 
+  const getAutoModelName = (providerId: string, modelId: string): string | undefined => {
+    const dataProvider = resolveModelDataProvider(providerId, modelId);
+    return dataProvider ? providersData[dataProvider]?.modelNames?.[modelId] : undefined;
+  };
+
+  const getOrAutoModelName = (providerId: string, modelId: string): string => {
+    const key = `${providerId}/${modelId}`;
+    if (modelNameOverrides[key] !== undefined) return modelNameOverrides[key];
+    return getAutoModelName(providerId, modelId) ?? '';
+  };
+
+  const setModelName = (providerId: string, modelId: string, value: string) => {
+    const key = `${providerId}/${modelId}`;
+    setModelNameOverrides(prev => ({ ...prev, [key]: value }));
+  };
+
+  const splitModelId = (modelId: string): { prefix: string; name: string } => {
+    const slash = modelId.indexOf('/');
+    return slash === -1
+      ? { prefix: '', name: modelId }
+      : { prefix: modelId.slice(0, slash), name: modelId.slice(slash + 1) };
+  };
+
+  const renameModelId = (providerId: string, oldModelId: string, newModelId: string) => {
+    if (newModelId === oldModelId) return;
+    setConfiguredProviders(prev => {
+      const config = prev[providerId];
+      if (!config) return prev;
+      const models = (config.models || []).map(m => (m === oldModelId ? newModelId : m));
+      return { ...prev, [providerId]: { ...config, models } };
+    });
+    setModelInputs(prev => ({
+      ...prev,
+      [providerId]: (configuredProviders[providerId]?.models || [])
+        .map(m => (m === oldModelId ? newModelId : m))
+        .join(', '),
+    }));
+    const oldKey = `${providerId}/${oldModelId}`;
+    const newKey = `${providerId}/${newModelId}`;
+    setModelLimitOverrides(prev => {
+      if (prev[oldKey] === undefined) return prev;
+      const next = { ...prev, [newKey]: prev[oldKey] };
+      delete next[oldKey];
+      return next;
+    });
+    setModelNameOverrides(prev => {
+      if (prev[oldKey] === undefined) return prev;
+      const next = { ...prev, [newKey]: prev[oldKey] };
+      delete next[oldKey];
+      return next;
+    });
+  };
+
+  const setModelPrefix = (providerId: string, modelId: string, prefix: string) => {
+    const { name } = splitModelId(modelId);
+    const trimmed = prefix.trim();
+    renameModelId(providerId, modelId, trimmed ? `${trimmed}/${name}` : name);
+  };
+
+  const renderModelOverrides = (id: string) => {
+    const models = configuredProviders[id]?.models || [];
+    if (models.length === 0) return null;
+    const isCustom = !!configuredProviders[id]?.isCustom;
+    return (
+      <div className="border-t pt-3">
+        <p className="m-0 mb-2 text-sm font-semibold text-muted-foreground">
+          Model Overrides <span className="font-normal">(auto-filled from models.dev)</span>
+        </p>
+        <div className="flex flex-col gap-3">
+          {models.map(modelId => {
+            const autoCtx = getModelLimit(id, modelId, 'context');
+            const autoOut = getModelLimit(id, modelId, 'output');
+            const autoName = getAutoModelName(id, modelId);
+            return (
+              <div key={modelId} className="flex flex-col gap-1.5 rounded-md border bg-muted/30 p-2.5">
+                <span className="font-mono text-xs font-semibold">{modelId}</span>
+                <div className="flex flex-wrap gap-2">
+                  {isCustom && (
+                    <div className="flex min-w-[110px] flex-1 flex-col gap-1">
+                      <Label className="text-xs text-muted-foreground">Prefix</Label>
+                      <Input
+                        className="h-8 font-mono text-xs"
+                        placeholder="e.g. boss"
+                        value={splitModelId(modelId).prefix}
+                        onChange={e => setModelPrefix(id, modelId, e.target.value)}
+                      />
+                    </div>
+                  )}
+                  <div className="flex min-w-[160px] flex-1 flex-col gap-1">
+                    <Label className="text-xs text-muted-foreground">Name</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      placeholder={autoName || 'Display name'}
+                      value={getOrAutoModelName(id, modelId)}
+                      onChange={e => setModelName(id, modelId, e.target.value)}
+                    />
+                  </div>
+                  <div className="flex min-w-[110px] flex-1 flex-col gap-1">
+                    <Label className="text-xs text-muted-foreground">Context</Label>
+                    <Input
+                      type="number"
+                      className="h-8 font-mono text-xs"
+                      placeholder={autoCtx !== undefined ? String(autoCtx) : 'e.g. 128000'}
+                      value={getOrAutoLimitValue(id, modelId, 'contextTokens')}
+                      onChange={e => setModelLimitField(id, modelId, 'contextTokens', e.target.value)}
+                    />
+                  </div>
+                  <div className="flex min-w-[110px] flex-1 flex-col gap-1">
+                    <Label className="text-xs text-muted-foreground">Max output</Label>
+                    <Input
+                      type="number"
+                      className="h-8 font-mono text-xs"
+                      placeholder={autoOut !== undefined ? String(autoOut) : 'e.g. 4096'}
+                      value={getOrAutoLimitValue(id, modelId, 'maxTokens')}
+                      onChange={e => setModelLimitField(id, modelId, 'maxTokens', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   // Generate Output JSONs
   const opencodeJson = useMemo(() => {
     const providers: any = {};
     Object.entries(configuredProviders).forEach(([id, config]) => {
       if (!config.enabled) return;
       const effectiveId = config.isCustom ? (config.customName || id) : id;
-      const providerModels: any[] = (config.models || []).map(modelId => {
+      const providerModels: Record<string, any> = {};
+      (config.models || []).forEach(modelId => {
         const key = `${id}/${modelId}`;
         const override = modelLimitOverrides[key];
         const autoContext = getModelLimit(id, modelId, 'context');
         const autoOutput = getModelLimit(id, modelId, 'output');
         const contextVal = override?.contextTokens !== undefined ? override.contextTokens : (autoContext !== undefined ? String(autoContext) : '');
         const outputVal = override?.maxTokens !== undefined ? override.maxTokens : (autoOutput !== undefined ? String(autoOutput) : '');
-        if (contextVal || outputVal) {
-          return {
-            id: modelId,
-            ...(contextVal ? { context_tokens: Number(contextVal) } : {}),
-            ...(outputVal ? { max_tokens: Number(outputVal) } : {}),
-          };
-        }
-        return modelId;
+        const limit: any = {
+          ...(contextVal ? { context: Number(contextVal) } : {}),
+          ...(outputVal ? { output: Number(outputVal) } : {}),
+        };
+        const nameKey = `${id}/${modelId}`;
+        const nameVal = modelNameOverrides[nameKey] !== undefined
+          ? modelNameOverrides[nameKey]
+          : (getAutoModelName(id, modelId) ?? '');
+        providerModels[modelId] = {
+          ...(nameVal ? { name: nameVal } : {}),
+          ...(Object.keys(limit).length > 0 ? { limit } : {}),
+        };
       });
 
       const entry: any = {
@@ -327,6 +879,8 @@ export default function SchemaConfigTool() {
       };
 
       if (config.isCustom) {
+        const npm = config.customNpm || DEFAULT_CUSTOM_NPM;
+        if (npm) entry.npm = npm;
         if (config.customApi) entry.baseURL = config.customApi;
         if (config.customEnv) entry.env = [config.customEnv];
       }
@@ -340,7 +894,7 @@ export default function SchemaConfigTool() {
       model: defaultModel,
       small_model: smallModel
     }, null, 2);
-  }, [configuredProviders, defaultModel, smallModel, modelLimitOverrides, providersData]);
+  }, [configuredProviders, defaultModel, smallModel, modelLimitOverrides, modelNameOverrides, providersData]);
 
   const omoJson = useMemo(() => {
     const agents: any = {};
@@ -390,233 +944,384 @@ export default function SchemaConfigTool() {
     return models;
   }, [configuredProviders, providersData]);
 
+  const customProviders = useMemo(
+    () => Object.entries(configuredProviders).filter(([, cfg]) => cfg.isCustom),
+    [configuredProviders]
+  );
+
+  const addedBuiltInProviders = useMemo(
+    () =>
+      Object.entries(providersData).filter(
+        ([id]) => configuredProviders[id] && !configuredProviders[id].isCustom
+      ),
+    [providersData, configuredProviders]
+  );
+
+  const availableToAdd = useMemo(
+    () =>
+      Object.entries(providersData)
+        .filter(([id]) => !configuredProviders[id])
+        .sort((a, b) => a[1].name.localeCompare(b[1].name)),
+    [providersData, configuredProviders]
+  );
+
+  const sourceProviderOptions = useMemo(
+    () =>
+      Object.entries(providersData)
+        .filter(([, p]) => (p.models?.length ?? 0) > 0)
+        .sort((a, b) => a[1].name.localeCompare(b[1].name))
+        .map(([pid, p]) => ({ value: pid, label: p.name })),
+    [providersData]
+  );
+
+  // While editing the preview, show the raw draft; valid JSON syncs back to form state.
+  const [draft, setDraft] = useState<string | null>(null);
+  const [editingTab, setEditingTab] = useState<'opencode' | 'omo' | null>(null);
+  const [jsonError, setJsonError] = useState<string | null>(null);
+
+  const generatedJson = activeTab === 'opencode' ? opencodeJson : omoJson;
+  const previewValue = editingTab === activeTab && draft !== null ? draft : generatedJson;
+
+  const validation = useMemo<ValidationResult>(() => {
+    let parsed: unknown;
+    try {
+      parsed = parseJsonc(previewValue);
+    } catch (e) {
+      return { valid: false, message: (e as Error).message };
+    }
+    return activeTab === 'opencode' ? validateOpencodeSchema(parsed) : validateOmoSchema(parsed);
+  }, [previewValue, activeTab]);
+
+  useEffect(() => {
+    setDraft(null);
+    setEditingTab(null);
+    setJsonError(null);
+  }, [activeTab]);
+
+  const handlePreviewChange = (next: string) => {
+    setDraft(next);
+    setEditingTab(activeTab);
+    try {
+      const parsed = parseJsonc(next);
+      if (activeTab === 'opencode') {
+        hydrateOpencodeState(parsed);
+      } else {
+        hydrateOmoState(parsed);
+      }
+      setJsonError(null);
+    } catch (e) {
+      setJsonError((e as Error).message);
+    }
+  };
+
+  const handlePreviewBlur = () => {
+    if (!jsonError) {
+      setDraft(null);
+      setEditingTab(null);
+    }
+  };
+
+  const [copied, setCopied] = useState(false);
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      alert("Copied to clipboard!");
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
     } catch (err) {
       console.error("Failed to copy", err);
     }
   };
 
+  const resetAll = () => {
+    if (typeof window !== 'undefined') {
+      const ok = window.confirm('Reset all configuration to defaults? This clears saved settings.');
+      if (!ok) return;
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+    setConfiguredProviders(DEFAULT_CONFIGURED_PROVIDERS);
+    setDefaultModel('anthropic/claude-3-5-sonnet-20241022');
+    setSmallModel('openai/gpt-4o-mini');
+    setModelInputs({});
+    setModelLimitOverrides({});
+    setModelNameOverrides({});
+    setProviderToAdd('');
+    setAgentConfigs(DEFAULT_AGENT_CONFIGS);
+    setAgentFallbacks({});
+    setCategoryConfigs(DEFAULT_CATEGORY_CONFIGS);
+    setCategoryFallbacks({});
+  };
+
+  const fieldInput =
+    'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 font-mono text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Configuration Generator</h2>
-        <div className={styles.headerRight}>
-          <button
-            className={styles.importBtn}
+    <div className="flex flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div className="flex flex-col gap-3 border-b bg-muted/40 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="m-0 text-xl font-semibold">Configuration Generator</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => fileInputRef.current?.click()}
-            title={`Import existing ${activeTab === 'opencode' ? 'opencode.json' : 'oh-my-opencode.json'}`}
+            title={`Import existing ${activeTab === 'opencode' ? 'opencode.json(c)' : 'oh-my-opencode.json(c)'}`}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
+            <Upload className="mr-1.5 h-3.5 w-3.5" />
             Import
-          </button>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetAll}
+            title="Reset all configuration to defaults"
+          >
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+            Reset
+          </Button>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".json,application/json"
-            style={{ display: 'none' }}
+            accept=".json,.jsonc,application/json"
+            className="hidden"
             onChange={handleImportFile}
           />
-          <div className={styles.tabs}>
-            <button
-              className={`${styles.tab} ${activeTab === 'opencode' ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab('opencode')}
-            >
-              Opencode Config
-            </button>
-            <button
-              className={`${styles.tab} ${activeTab === 'omo' ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab('omo')}
-            >
-              Oh My Opencode
-            </button>
-          </div>
+          <Tabs value={activeTab} onValueChange={v => setActiveTab(v as 'opencode' | 'omo')}>
+            <TabsList>
+              <TabsTrigger value="opencode">Opencode Config</TabsTrigger>
+              <TabsTrigger value="omo">Oh My Opencode</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </div>
 
-      <div className={styles.contentLayout}>
-        <div className={styles.editorPane}>
+      <div className="flex min-h-[500px] flex-col lg:flex-row">
+        <div className="flex-1 overflow-y-auto border-b p-6 lg:border-b-0 lg:border-r">
           {activeTab === 'opencode' ? (
-            <div className={styles.opencodeConfig}>
-              <div className={styles.section}>
-                <div className={styles.sectionTitleRow}>
-                  <h3 className={styles.sectionTitle}>Providers</h3>
-                  <button className={styles.addBtn} onClick={addCustomProvider}>+ Add Custom Provider</button>
+            <div className="flex flex-col gap-8">
+              <div>
+                <div className="mb-4 flex items-center justify-between gap-3 border-b pb-2">
+                  <h3 className="m-0 text-lg font-semibold">Providers</h3>
+                  <div className="flex items-center gap-2">
+                    <Select value={providerToAdd} onValueChange={addProvider}>
+                      <SelectTrigger className="h-8 w-[180px] text-xs">
+                        <SelectValue placeholder="+ Add provider…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableToAdd.map(([id, provider]) => (
+                          <SelectItem key={id} value={id}>{provider.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="sm" onClick={addCustomProvider}>+ Custom</Button>
+                  </div>
                 </div>
-                {loading && <p className={styles.loading}>Loading providers from models.dev...</p>}
+                {loading && <p className="text-sm italic text-muted-foreground">Loading providers from models.dev...</p>}
 
-                <div className={styles.providerList}>
-                  {Object.entries(configuredProviders)
-                    .filter(([, cfg]) => cfg.isCustom)
-                    .map(([id, config]) => (
-                      <div key={id} className={`${styles.providerCard} ${styles.enabled} ${styles.customProviderCard}`}>
-                        <div className={styles.providerHeader}>
-                          <span className={styles.customBadge}>Custom</span>
-                          <div className={styles.customProviderFields}>
-                            <input
-                              type="text"
-                              placeholder="Provider name (e.g. MyOpenAI)"
-                              value={config.customName || ''}
-                              onChange={e => handleProviderConfigChange(id, 'customName', e.target.value)}
-                              className={styles.inlineInput}
-                            />
-                            <input
-                              type="text"
-                              placeholder="Base URL (e.g. https://my-proxy/v1)"
-                              value={config.customApi || ''}
-                              onChange={e => handleProviderConfigChange(id, 'customApi', e.target.value)}
-                              className={styles.inlineInput}
-                            />
-                            <input
-                              type="text"
-                              placeholder="API key env var (e.g. MY_API_KEY)"
-                              value={config.customEnv || ''}
-                              onChange={e => handleProviderConfigChange(id, 'customEnv', e.target.value)}
-                              className={styles.inlineInput}
-                            />
-                          </div>
-                          <button className={styles.removeBtn} onClick={() => removeCustomProvider(id)}>×</button>
-                        </div>
-                        <div className={styles.providerSettings}>
-                          <div className={styles.inputGroup}>
-                            <label>API Key Value (optional)</label>
-                            <input
-                              type="text"
-                              placeholder="Actual key value or leave blank"
-                              value={config.apiKey || ''}
-                              onChange={e => handleProviderConfigChange(id, 'apiKey', e.target.value)}
-                            />
-                          </div>
-                          <div className={styles.inputGroup}>
-                            <label>Models (comma-separated)</label>
-                            <input
-                              type="text"
-                              placeholder="model-a, model-b"
-                              value={modelInputs[id] ?? ''}
-                              onChange={e => {
-                                setModelInputs(prev => ({ ...prev, [id]: e.target.value }));
-                                handleProviderConfigChange(id, 'models', e.target.value.split(',').map(s => s.trim()).filter(Boolean));
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                {addedBuiltInProviders.length === 0 && customProviders.length === 0 && !loading && (
+                  <p className="rounded-md border border-dashed bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
+                    No providers added yet. Use “Add provider…” above to get started.
+                  </p>
+                )}
 
-                  {Object.entries(providersData).map(([id, provider]) => (
-                    <div key={id} className={`${styles.providerCard} ${configuredProviders[id]?.enabled ? styles.enabled : ''}`}>
-                      <div className={styles.providerHeader}>
-                        <label className={styles.checkboxLabel}>
-                          <input
-                            type="checkbox"
-                            checked={!!configuredProviders[id]?.enabled}
-                            onChange={() => handleProviderToggle(id)}
+                <div className="flex flex-col gap-4">
+                  {customProviders.map(([id, config]) => (
+                    <div key={id} className="overflow-hidden rounded-md border border-amber-500/60">
+                      <div className="flex items-center gap-2 bg-muted/60 px-4 py-3">
+                        <Badge className="bg-amber-500 text-black hover:bg-amber-500">Custom</Badge>
+                        <div className="flex flex-1 flex-wrap gap-2">
+                          <Input
+                            className="min-w-[140px] flex-1 font-mono text-xs"
+                            placeholder="Provider name (e.g. MyOpenAI)"
+                            value={config.customName || ''}
+                            onChange={e => handleProviderConfigChange(id, 'customName', e.target.value)}
                           />
-                          <span className={styles.providerName}>{provider.name}</span>
-                        </label>
+                          <Input
+                            className="min-w-[140px] flex-1 font-mono text-xs"
+                            placeholder={DEFAULT_CUSTOM_API}
+                            value={config.customApi || ''}
+                            onChange={e => handleProviderConfigChange(id, 'customApi', e.target.value)}
+                          />
+                          <Input
+                            className="min-w-[140px] flex-1 font-mono text-xs"
+                            placeholder="API key env var (e.g. MY_API_KEY)"
+                            value={config.customEnv || ''}
+                            onChange={e => handleProviderConfigChange(id, 'customEnv', e.target.value)}
+                          />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                          onClick={() => removeCustomProvider(id)}
+                          title="Remove custom provider"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-
-                      {configuredProviders[id]?.enabled && (
-                        <div className={styles.providerSettings}>
-                          <div className={styles.inputGroup}>
-                            <label>API Key Variable</label>
-                            <input
-                              type="text"
-                              placeholder={`e.g. \${${provider.env[0] || 'API_KEY'}}`}
-                              value={configuredProviders[id]?.apiKey || ''}
-                              onChange={e => handleProviderConfigChange(id, 'apiKey', e.target.value)}
-                            />
+                      <div className="flex flex-col gap-4 border-t p-4">
+                        <div className="flex flex-col gap-1.5">
+                          <Label>AI SDK</Label>
+                          <Select
+                            value={config.customNpm || DEFAULT_CUSTOM_NPM}
+                            onValueChange={v => handleProviderConfigChange(id, 'customNpm', v)}
+                          >
+                            <SelectTrigger className="text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {AI_SDK_OPTIONS.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label} <span className="font-mono text-xs text-muted-foreground">({opt.value})</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <Label>API Key Value (optional)</Label>
+                          <Input
+                            className="font-mono text-sm"
+                            placeholder={DEFAULT_CUSTOM_KEY}
+                            value={config.apiKey || ''}
+                            onChange={e => handleProviderConfigChange(id, 'apiKey', e.target.value)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <Label>Models from Providers</Label>
+                          <MultiSelect
+                            options={sourceProviderOptions}
+                            selected={config.sourceProviders || []}
+                            onChange={next => setCustomSourceProviders(id, next)}
+                            placeholder="Select providers…"
+                            searchPlaceholder="Search providers…"
+                            emptyText="No providers"
+                          />
+                          <p className="m-0 text-xs text-muted-foreground">
+                            Pull model ids from these providers into the selector below.
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <Label>Models</Label>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              disabled={fetchStatus[id]?.loading}
+                              onClick={() => fetchCustomProviderModels(id)}
+                            >
+                              <RefreshCw className={cn('mr-1.5 h-3 w-3', fetchStatus[id]?.loading && 'animate-spin')} />
+                              {fetchStatus[id]?.loading ? 'Fetching…' : 'Fetch models'}
+                            </Button>
                           </div>
-                          <div className={styles.inputGroup}>
-                            <label>Base URL (Optional)</label>
-                            <input
-                              type="text"
-                              placeholder={provider.api || "https://..."}
-                              value={configuredProviders[id]?.baseURL || ''}
-                              onChange={e => handleProviderConfigChange(id, 'baseURL', e.target.value)}
-                            />
-                          </div>
-                          <div className={styles.inputGroup}>
-                            <label>Enabled Models (comma-separated)</label>
-                            <input
-                              type="text"
-                              placeholder="Model names"
-                              value={modelInputs[id] ?? (configuredProviders[id]?.models?.join(', ') || '')}
-                              onChange={e => {
-                                setModelInputs(prev => ({ ...prev, [id]: e.target.value }));
-                                handleProviderConfigChange(id, 'models', e.target.value.split(',').map(s => s.trim()).filter(Boolean));
-                              }}
-                            />
-                            <p className={styles.helpText}>Available: {provider.models?.slice(0, 10).join(', ')}{provider.models?.length > 10 ? '...' : ''}</p>
-                          </div>
-
-                          {/* Per-model token limits */}
-                          {(configuredProviders[id]?.models || []).length > 0 && (
-                            <div className={styles.modelLimitsSection}>
-                              <p className={styles.modelLimitsLabel}>Model Token Limits <span className={styles.autoHint}>(auto-filled from models.dev)</span></p>
-                              <div className={styles.modelLimitsGrid}>
-                                {(configuredProviders[id]?.models || []).map(modelId => {
-                                  const autoCtx = getModelLimit(id, modelId, 'context');
-                                  const autoOut = getModelLimit(id, modelId, 'output');
-                                  return (
-                                    <div key={modelId} className={styles.modelLimitRow}>
-                                      <span className={styles.modelLimitName}>{modelId}</span>
-                                      <div className={styles.modelLimitInputs}>
-                                        <div className={styles.limitField}>
-                                          <label>Context</label>
-                                          <input
-                                            type="number"
-                                            placeholder={autoCtx !== undefined ? String(autoCtx) : 'e.g. 128000'}
-                                            value={getOrAutoLimitValue(id, modelId, 'contextTokens')}
-                                            onChange={e => setModelLimitField(id, modelId, 'contextTokens', e.target.value)}
-                                          />
-                                        </div>
-                                        <div className={styles.limitField}>
-                                          <label>Max output</label>
-                                          <input
-                                            type="number"
-                                            placeholder={autoOut !== undefined ? String(autoOut) : 'e.g. 4096'}
-                                            value={getOrAutoLimitValue(id, modelId, 'maxTokens')}
-                                            onChange={e => setModelLimitField(id, modelId, 'maxTokens', e.target.value)}
-                                          />
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
+                          <MultiSelect
+                            options={buildModelOptions(
+                              [...modelsFromProviders(config.sourceProviders), ...(fetchedModels[id] || [])],
+                              config.models
+                            )}
+                            selected={config.models || []}
+                            onChange={next => setProviderModels(id, next)}
+                            placeholder="Add models…"
+                            searchPlaceholder="Search or type a model id…"
+                            emptyText="Type a model id to add"
+                            allowCustom
+                          />
+                          {fetchStatus[id]?.error ? (
+                            <p className="m-0 text-xs text-destructive">Fetch failed: {fetchStatus[id]?.error}</p>
+                          ) : (
+                            <p className="m-0 text-xs text-muted-foreground">
+                              {fetchedModels[id]?.length
+                                ? `${fetchedModels[id].length} models fetched from provider — search to add, or type a custom id.`
+                                : config.sourceProviders?.length
+                                  ? `${modelsFromProviders(config.sourceProviders).length} models from selected providers — or fetch from the provider / type a custom id.`
+                                  : 'Fetch from the provider, type a model id, or pick source providers above.'}
+                            </p>
                           )}
                         </div>
-                      )}
+                        {renderModelOverrides(id)}
+                      </div>
+                    </div>
+                  ))}
+
+                  {addedBuiltInProviders.map(([id, provider]) => (
+                    <div key={id} className="overflow-hidden rounded-md border border-primary/40">
+                      <div className="flex items-center justify-between gap-2 bg-muted/60 px-4 py-3">
+                        <span className="font-semibold">{provider.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => removeProvider(id)}
+                          title={`Remove ${provider.name}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="flex flex-col gap-4 border-t p-4">
+                        <div className="flex flex-col gap-1.5">
+                          <Label>API Key Variable</Label>
+                          <Input
+                            className="font-mono text-sm"
+                            placeholder={`e.g. \${${provider.env[0] || 'API_KEY'}}`}
+                            value={configuredProviders[id]?.apiKey || ''}
+                            onChange={e => handleProviderConfigChange(id, 'apiKey', e.target.value)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <Label>Base URL (Optional)</Label>
+                          <Input
+                            className="font-mono text-sm"
+                            placeholder={provider.api || 'https://...'}
+                            value={configuredProviders[id]?.baseURL || ''}
+                            onChange={e => handleProviderConfigChange(id, 'baseURL', e.target.value)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <Label>Enabled Models</Label>
+                          <MultiSelect
+                            options={buildModelOptions(provider.models, configuredProviders[id]?.models)}
+                            selected={configuredProviders[id]?.models || []}
+                            onChange={next => setProviderModels(id, next)}
+                            placeholder="Select models…"
+                            searchPlaceholder="Search or add a model…"
+                            emptyText="No matching models"
+                            allowCustom
+                          />
+                          <p className="m-0 text-xs text-muted-foreground">
+                            {provider.models?.length
+                              ? `${provider.models.length} models available from models.dev — search to add, or type a custom id.`
+                              : 'Type a model id and press Enter to add.'}
+                          </p>
+                        </div>
+
+                        {renderModelOverrides(id)}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Default Models</h3>
-                <div className={styles.defaultModelsGrid}>
-                  <div className={styles.inputGroup}>
-                    <label>Default Model</label>
+              <div>
+                <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Default Models</h3>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Default Model</Label>
                     <input
-                      type="text"
+                      className={fieldInput}
                       list="available-models"
                       value={defaultModel}
                       onChange={e => setDefaultModel(e.target.value)}
                       placeholder="provider/model"
                     />
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label>Small Model</label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Small Model</Label>
                     <input
-                      type="text"
+                      className={fieldInput}
                       list="available-models"
                       value={smallModel}
                       onChange={e => setSmallModel(e.target.value)}
@@ -627,53 +1332,51 @@ export default function SchemaConfigTool() {
               </div>
             </div>
           ) : (
-            <div className={styles.omoConfig}>
-              <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Agents</h3>
-                <div className={styles.gridList}>
+            <div className="flex flex-col gap-8">
+              <div>
+                <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Agents</h3>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
                   {AGENTS.map(agent => (
-                    <div key={agent} className={styles.agentBlock}>
-                      <label className={styles.agentLabel}>{agent}</label>
+                    <div key={agent} className="flex flex-col gap-1.5">
+                      <Label className="capitalize">{agent}</Label>
                       <input
-                        type="text"
+                        className={fieldInput}
                         list="available-models"
                         value={agentConfigs[agent] || ''}
                         onChange={e => setAgentConfigs({ ...agentConfigs, [agent]: e.target.value })}
                         placeholder="Inherit default or provider/model"
                       />
                       <input
-                        type="text"
+                        className={cn(fieldInput, 'border-dashed text-xs text-muted-foreground placeholder:italic')}
                         list="available-models"
                         value={agentFallbacks[agent] || ''}
                         onChange={e => setAgentFallbacks({ ...agentFallbacks, [agent]: e.target.value })}
                         placeholder="Fallback models (comma-separated)"
-                        className={styles.fallbackInput}
                       />
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Categories</h3>
-                <div className={styles.gridList}>
+              <div>
+                <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Categories</h3>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
                   {CATEGORIES.map(category => (
-                    <div key={category} className={styles.agentBlock}>
-                      <label className={styles.agentLabel}>{category}</label>
+                    <div key={category} className="flex flex-col gap-1.5">
+                      <Label className="capitalize">{category}</Label>
                       <input
-                        type="text"
+                        className={fieldInput}
                         list="available-models"
                         value={categoryConfigs[category] || ''}
                         onChange={e => setCategoryConfigs({ ...categoryConfigs, [category]: e.target.value })}
                         placeholder="Inherit default or provider/model"
                       />
                       <input
-                        type="text"
+                        className={cn(fieldInput, 'border-dashed text-xs text-muted-foreground placeholder:italic')}
                         list="available-models"
                         value={categoryFallbacks[category] || ''}
                         onChange={e => setCategoryFallbacks({ ...categoryFallbacks, [category]: e.target.value })}
                         placeholder="Fallback models (comma-separated)"
-                        className={styles.fallbackInput}
                       />
                     </div>
                   ))}
@@ -687,26 +1390,44 @@ export default function SchemaConfigTool() {
           </datalist>
         </div>
 
-        <div className={styles.previewPane}>
-          <div className={styles.previewHeader}>
-            <span className={styles.previewTitle}>
+        <div className="flex flex-1 flex-col overflow-hidden border-t lg:border-l lg:border-t-0">
+          <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-6 py-3">
+            <span className="flex flex-wrap items-center gap-2 font-mono text-sm font-medium">
               {activeTab === 'opencode' ? 'opencode.json' : 'oh-my-opencode.json'}
+              {editingTab === activeTab && !jsonError && (
+                <Badge variant="secondary" className="text-[10px]">edited</Badge>
+              )}
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                  validation.valid
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-destructive/15 text-destructive'
+                )}
+                title={validation.message}
+              >
+                {validation.valid ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                {validation.valid ? 'Valid' : 'Invalid'}
+              </span>
             </span>
-            <button
-              className={styles.copyBtn}
-              onClick={() => copyToClipboard(activeTab === 'opencode' ? opencodeJson : omoJson)}
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                copied && 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-600 hover:text-white'
+              )}
+              onClick={() => copyToClipboard(previewValue)}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              Copy
-            </button>
+              {copied ? <Check className="mr-1.5 h-4 w-4" /> : <Copy className="mr-1.5 h-4 w-4" />}
+              {copied ? 'Copied!' : 'Copy'}
+            </Button>
           </div>
-          <div className={styles.codeWrapper}>
-            <pre className={styles.codeBlock}>
-              <code>{activeTab === 'opencode' ? opencodeJson : omoJson}</code>
-            </pre>
+          <div className="flex flex-1 flex-col overflow-hidden" onBlur={handlePreviewBlur}>
+            <JsonPreview
+              value={previewValue}
+              onChange={handlePreviewChange}
+              error={jsonError || (!validation.valid ? validation.message : null)}
+            />
           </div>
         </div>
       </div>
