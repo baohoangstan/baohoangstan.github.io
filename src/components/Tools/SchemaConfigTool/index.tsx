@@ -201,8 +201,10 @@ type PersistedState = {
   modelNameOverrides?: Record<string, string>;
   agentConfigs?: Record<string, string>;
   agentFallbacks?: Record<string, string>;
+  agentProviders?: Record<string, string>;
   categoryConfigs?: Record<string, string>;
   categoryFallbacks?: Record<string, string>;
+  categoryProviders?: Record<string, string>;
 };
 
 function loadPersisted(): PersistedState {
@@ -355,8 +357,12 @@ export default function SchemaConfigTool() {
   // OMO state
   const [agentConfigs, setAgentConfigs] = useState<Record<string, string>>(persisted.agentConfigs ?? DEFAULT_AGENT_CONFIGS);
   const [agentFallbacks, setAgentFallbacks] = useState<Record<string, string>>(persisted.agentFallbacks ?? {});
+  const [agentProviders, setAgentProviders] = useState<Record<string, string>>(persisted.agentProviders ?? {});
   const [categoryConfigs, setCategoryConfigs] = useState<Record<string, string>>(persisted.categoryConfigs ?? DEFAULT_CATEGORY_CONFIGS);
   const [categoryFallbacks, setCategoryFallbacks] = useState<Record<string, string>>(persisted.categoryFallbacks ?? {});
+  const [categoryProviders, setCategoryProviders] = useState<Record<string, string>>(persisted.categoryProviders ?? {});
+
+  const opencodeImportRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -370,8 +376,10 @@ export default function SchemaConfigTool() {
       modelNameOverrides,
       agentConfigs,
       agentFallbacks,
+      agentProviders,
       categoryConfigs,
       categoryFallbacks,
+      categoryProviders,
     };
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -388,8 +396,10 @@ export default function SchemaConfigTool() {
     modelNameOverrides,
     agentConfigs,
     agentFallbacks,
+    agentProviders,
     categoryConfigs,
     categoryFallbacks,
+    categoryProviders,
   ]);
 
   // Fetch models.dev
@@ -531,7 +541,11 @@ export default function SchemaConfigTool() {
       for (const [id, cfg] of Object.entries(json.agents)) {
         const c = cfg as any;
         if (c.model) newAgents[id] = c.model;
-        if (Array.isArray(c.fallback_models)) newFallbacks[id] = c.fallback_models.join(', ');
+        if (Array.isArray(c.fallback_models))
+          newFallbacks[id] = c.fallback_models
+            .map((f: any) => (typeof f === 'string' ? f : f?.model))
+            .filter(Boolean)
+            .join(', ');
       }
       setAgentConfigs(newAgents);
       setAgentFallbacks(newFallbacks);
@@ -542,7 +556,11 @@ export default function SchemaConfigTool() {
       for (const [id, cfg] of Object.entries(json.categories)) {
         const c = cfg as any;
         if (c.model) newCats[id] = c.model;
-        if (Array.isArray(c.fallback_models)) newCatFallbacks[id] = c.fallback_models.join(', ');
+        if (Array.isArray(c.fallback_models))
+          newCatFallbacks[id] = c.fallback_models
+            .map((f: any) => (typeof f === 'string' ? f : f?.model))
+            .filter(Boolean)
+            .join(', ');
       }
       setCategoryConfigs(newCats);
       setCategoryFallbacks(newCatFallbacks);
@@ -897,11 +915,16 @@ export default function SchemaConfigTool() {
   }, [configuredProviders, defaultModel, smallModel, modelLimitOverrides, modelNameOverrides, providersData]);
 
   const omoJson = useMemo(() => {
+    const parseFallbacks = (raw: string): string[] =>
+      raw
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s && !s.endsWith('/'));
+
     const agents: any = {};
     Object.entries(agentConfigs).forEach(([id, model]) => {
       if (!model) return;
-      const fallbackRaw = agentFallbacks[id] || '';
-      const fallbacks = fallbackRaw.split(',').map(s => s.trim()).filter(Boolean);
+      const fallbacks = parseFallbacks(agentFallbacks[id] || '');
       agents[id] = {
         model,
         ...(fallbacks.length > 0 && { fallback_models: fallbacks }),
@@ -911,8 +934,7 @@ export default function SchemaConfigTool() {
     const categories: any = {};
     Object.entries(categoryConfigs).forEach(([id, model]) => {
       if (!model) return;
-      const fallbackRaw = categoryFallbacks[id] || '';
-      const fallbacks = fallbackRaw.split(',').map(s => s.trim()).filter(Boolean);
+      const fallbacks = parseFallbacks(categoryFallbacks[id] || '');
       categories[id] = {
         model,
         ...(fallbacks.length > 0 && { fallback_models: fallbacks }),
@@ -973,6 +995,212 @@ export default function SchemaConfigTool() {
         .map(([pid, p]) => ({ value: pid, label: p.name })),
     [providersData]
   );
+
+  const omoProviders = useMemo(() => {
+    const list: { id: string; label: string; models: string[] }[] = [];
+    Object.entries(configuredProviders).forEach(([id, config]) => {
+      if (!config.enabled) return;
+      const effectiveId = config.isCustom ? (config.customName || id) : id;
+      if (!effectiveId) return;
+      const label = config.isCustom
+        ? config.customName || id
+        : providersData[id]?.name || id;
+      list.push({ id: effectiveId, label, models: config.models || [] });
+    });
+    return list.sort((a, b) => a.label.localeCompare(b.label));
+  }, [configuredProviders, providersData]);
+
+  const omoProviderModels = (providerId: string): { value: string }[] => {
+    const entry = omoProviders.find(p => p.id === providerId);
+    return (entry?.models || []).map(m => ({ value: m }));
+  };
+
+  const providerOfModel = (model?: string): string => {
+    if (!model) return '';
+    const slash = model.indexOf('/');
+    if (slash === -1) return '';
+    const prefix = model.slice(0, slash);
+    return omoProviders.some(p => p.id === prefix) ? prefix : '';
+  };
+
+  const getSectionProvider = (
+    providerMap: Record<string, string>,
+    configMap: Record<string, string>,
+    key: string
+  ): string => providerMap[key] ?? providerOfModel(configMap[key]);
+
+  const setAgentProvider = (agent: string, providerId: string) => {
+    setAgentProviders(prev => ({ ...prev, [agent]: providerId }));
+    setAgentConfigs(prev => {
+      const cur = prev[agent];
+      if (cur && providerOfModel(cur) === providerId) return prev;
+      return { ...prev, [agent]: '' };
+    });
+  };
+
+  const setAgentModel = (agent: string, model: string) => {
+    setAgentConfigs(prev => ({ ...prev, [agent]: model }));
+  };
+
+  const setCategoryProvider = (category: string, providerId: string) => {
+    setCategoryProviders(prev => ({ ...prev, [category]: providerId }));
+    setCategoryConfigs(prev => {
+      const cur = prev[category];
+      if (cur && providerOfModel(cur) === providerId) return prev;
+      return { ...prev, [category]: '' };
+    });
+  };
+
+  const setCategoryModel = (category: string, model: string) => {
+    setCategoryConfigs(prev => ({ ...prev, [category]: model }));
+  };
+
+  const handleImportOpencodeFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = parseJsonc(ev.target?.result as string);
+        hydrateOpencodeState(json);
+      } catch {
+        alert('Invalid JSON/JSONC file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const loadSavedOpencode = () => {
+    const saved = loadPersisted();
+    if (saved.configuredProviders) {
+      setConfiguredProviders(saved.configuredProviders);
+      setModelInputs(saved.modelInputs ?? {});
+      setModelLimitOverrides(saved.modelLimitOverrides ?? {});
+      setModelNameOverrides(saved.modelNameOverrides ?? {});
+      if (saved.defaultModel) setDefaultModel(saved.defaultModel);
+      if (saved.smallModel) setSmallModel(saved.smallModel);
+    } else if (typeof window !== 'undefined') {
+      alert('No saved opencode config found in this browser.');
+    }
+  };
+
+  const renderPmPair = (
+    pairKey: string,
+    provider: string,
+    modelValue: string,
+    onPickProvider: (v: string) => void,
+    onPickModel: (v: string) => void,
+    onRemove?: () => void
+  ) => {
+    const modelOptions = omoProviderModels(provider);
+    const modelMatch = modelOptions.some(m => `${provider}/${m.value}` === modelValue);
+    return (
+      <div key={pairKey} className="flex items-center gap-2">
+        <Select value={provider} onValueChange={onPickProvider}>
+          <SelectTrigger className="h-9 flex-1 text-xs">
+            <SelectValue placeholder="Provider…" />
+          </SelectTrigger>
+          <SelectContent>
+            {omoProviders.map(p => (
+              <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={modelMatch ? modelValue : ''}
+          onValueChange={onPickModel}
+          disabled={!provider || modelOptions.length === 0}
+        >
+          <SelectTrigger className="h-9 flex-1 text-xs">
+            <SelectValue placeholder={provider ? 'Model…' : 'Pick provider'} />
+          </SelectTrigger>
+          <SelectContent>
+            {modelOptions.map(m => (
+              <SelectItem key={m.value} value={`${provider}/${m.value}`}>{m.value}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {onRemove && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+            onClick={onRemove}
+            title="Remove fallback"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    );
+  };
+
+  const providerOfEntry = (entry: string): string => {
+    const slash = entry.indexOf('/');
+    return slash === -1 ? '' : entry.slice(0, slash);
+  };
+
+  const renderOmoRow = (
+    key: string,
+    selectedProvider: string,
+    selectedModel: string,
+    fallbackRaw: string,
+    onProvider: (v: string) => void,
+    onModel: (v: string) => void,
+    onFallback: (v: string) => void
+  ) => {
+    const mainModel = providerOfModel(selectedModel) === selectedProvider ? selectedModel : '';
+    const fallbackEntries = fallbackRaw.split(',').map(s => s.trim()).filter(Boolean);
+    const commitFallbacks = (arr: string[]) => onFallback(arr.filter(Boolean).join(', '));
+    const setFbProvider = (idx: number, prov: string) => {
+      const next = [...fallbackEntries];
+      next[idx] = prov ? `${prov}/` : '';
+      commitFallbacks(next);
+    };
+    const setFbModel = (idx: number, full: string) => {
+      const next = [...fallbackEntries];
+      next[idx] = full;
+      commitFallbacks(next);
+    };
+    const removeFb = (idx: number) => commitFallbacks(fallbackEntries.filter((_, i) => i !== idx));
+    const addFb = (prov: string) => {
+      if (prov) commitFallbacks([...fallbackEntries, `${prov}/`]);
+    };
+
+    return (
+      <div key={key} className="flex flex-col gap-3 rounded-md border bg-muted/20 p-3">
+        <Label className="capitalize">{key}</Label>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-muted-foreground">Main</span>
+          {renderPmPair(`${key}-main`, selectedProvider, mainModel, onProvider, onModel)}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-muted-foreground">Fallbacks</span>
+          {fallbackEntries.map((entry, idx) =>
+            renderPmPair(
+              `${key}-fb-${idx}`,
+              providerOfEntry(entry),
+              entry,
+              prov => setFbProvider(idx, prov),
+              full => setFbModel(idx, full),
+              () => removeFb(idx)
+            )
+          )}
+          <Select value="" onValueChange={addFb}>
+            <SelectTrigger className="h-9 border-dashed text-xs text-muted-foreground">
+              <SelectValue placeholder="+ Add fallback provider…" />
+            </SelectTrigger>
+            <SelectContent>
+              {omoProviders.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    );
+  };
 
   // While editing the preview, show the raw draft; valid JSON syncs back to form state.
   const [draft, setDraft] = useState<string | null>(null);
@@ -1051,8 +1279,10 @@ export default function SchemaConfigTool() {
     setProviderToAdd('');
     setAgentConfigs(DEFAULT_AGENT_CONFIGS);
     setAgentFallbacks({});
+    setAgentProviders({});
     setCategoryConfigs(DEFAULT_CATEGORY_CONFIGS);
     setCategoryFallbacks({});
+    setCategoryProviders({});
   };
 
   const fieldInput =
@@ -1333,53 +1563,65 @@ export default function SchemaConfigTool() {
             </div>
           ) : (
             <div className="flex flex-col gap-8">
+              <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold">Provider source</span>
+                  <span className="text-xs text-muted-foreground">
+                    {omoProviders.length
+                      ? `${omoProviders.length} provider(s) available — configured in the Opencode Config tab.`
+                      : 'No providers yet. Import an opencode.json or load your saved config.'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => opencodeImportRef.current?.click()}>
+                    <Upload className="mr-1.5 h-3.5 w-3.5" />
+                    Import opencode.json
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={loadSavedOpencode}>
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    Load saved
+                  </Button>
+                  <input
+                    ref={opencodeImportRef}
+                    type="file"
+                    accept=".json,.jsonc,application/json"
+                    className="hidden"
+                    onChange={handleImportOpencodeFile}
+                  />
+                </div>
+              </div>
+
               <div>
                 <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Agents</h3>
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
-                  {AGENTS.map(agent => (
-                    <div key={agent} className="flex flex-col gap-1.5">
-                      <Label className="capitalize">{agent}</Label>
-                      <input
-                        className={fieldInput}
-                        list="available-models"
-                        value={agentConfigs[agent] || ''}
-                        onChange={e => setAgentConfigs({ ...agentConfigs, [agent]: e.target.value })}
-                        placeholder="Inherit default or provider/model"
-                      />
-                      <input
-                        className={cn(fieldInput, 'border-dashed text-xs text-muted-foreground placeholder:italic')}
-                        list="available-models"
-                        value={agentFallbacks[agent] || ''}
-                        onChange={e => setAgentFallbacks({ ...agentFallbacks, [agent]: e.target.value })}
-                        placeholder="Fallback models (comma-separated)"
-                      />
-                    </div>
-                  ))}
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+                  {AGENTS.map(agent =>
+                    renderOmoRow(
+                      agent,
+                      getSectionProvider(agentProviders, agentConfigs, agent),
+                      agentConfigs[agent] || '',
+                      agentFallbacks[agent] || '',
+                      v => setAgentProvider(agent, v),
+                      v => setAgentModel(agent, v),
+                      v => setAgentFallbacks(prev => ({ ...prev, [agent]: v }))
+                    )
+                  )}
                 </div>
               </div>
 
               <div>
                 <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Categories</h3>
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
-                  {CATEGORIES.map(category => (
-                    <div key={category} className="flex flex-col gap-1.5">
-                      <Label className="capitalize">{category}</Label>
-                      <input
-                        className={fieldInput}
-                        list="available-models"
-                        value={categoryConfigs[category] || ''}
-                        onChange={e => setCategoryConfigs({ ...categoryConfigs, [category]: e.target.value })}
-                        placeholder="Inherit default or provider/model"
-                      />
-                      <input
-                        className={cn(fieldInput, 'border-dashed text-xs text-muted-foreground placeholder:italic')}
-                        list="available-models"
-                        value={categoryFallbacks[category] || ''}
-                        onChange={e => setCategoryFallbacks({ ...categoryFallbacks, [category]: e.target.value })}
-                        placeholder="Fallback models (comma-separated)"
-                      />
-                    </div>
-                  ))}
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+                  {CATEGORIES.map(category =>
+                    renderOmoRow(
+                      category,
+                      getSectionProvider(categoryProviders, categoryConfigs, category),
+                      categoryConfigs[category] || '',
+                      categoryFallbacks[category] || '',
+                      v => setCategoryProvider(category, v),
+                      v => setCategoryModel(category, v),
+                      v => setCategoryFallbacks(prev => ({ ...prev, [category]: v }))
+                    )
+                  )}
                 </div>
               </div>
             </div>
