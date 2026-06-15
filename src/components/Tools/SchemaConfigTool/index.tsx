@@ -3,32 +3,37 @@ import { Upload, RotateCcw, Copy, Check, AlertCircle } from 'lucide-react';
 import { cn } from '@site/src/lib/utils';
 import { Button } from '@site/src/components/ui/button';
 import { Badge } from '@site/src/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@site/src/components/ui/tabs';
 import { SchemaConfigProvider, useSchemaConfig, type SchemaTab } from './shared/context';
 import { JsonPreview } from './shared/JsonPreview';
 import { parseJsonc } from './shared/jsonc';
-import { validateOpencodeSchema, validateOmoSchema } from './shared/validators';
+import { validateOpencodeSchema, validateOmoSchema, validateOmoSlimSchema } from './shared/validators';
 import { buildOpencodeJson, hydrateOpencodeState } from './shared/opencode';
 import { buildOmoJson, hydrateOmoState } from './shared/omo';
+import { buildOmoSlimJson, hydrateOmoSlimState } from './shared/omoSlim';
 import type { ValidationResult } from './shared/types';
 import DefaultPage from './pages/DefaultPage';
 import OpencodePage from './pages/OpencodePage';
 import OmoPage from './pages/OmoPage';
+import OmoSlimPage from './pages/OmoSlimPage';
 
 const TAB_META: Record<SchemaTab, { label: string; fileName: string }> = {
-  default: { label: 'Default', fileName: 'schema.json' },
+  default: { label: 'General', fileName: 'schema.json' },
   opencode: { label: 'Opencode Config', fileName: 'opencode.json' },
   omo: { label: 'Oh My Opencode', fileName: 'oh-my-opencode.json' },
+  omoslim: { label: 'Oh My Opencode Slim', fileName: 'oh-my-opencode-slim.json' },
 };
 
-function SchemaConfigInner() {
+type SchemaConfigToolProps = {
+  /** Which config this page edits. Drives the JSON preview, filename, and validation. */
+  tab: SchemaTab;
+};
+
+function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
   const ctx = useSchemaConfig();
   const {
-    activeTab,
-    setActiveTab,
     providersData,
-    configuredProviders,
     setConfiguredProviders,
+    configuredProviders,
     defaultModel,
     setDefaultModel,
     smallModel,
@@ -46,7 +51,10 @@ function SchemaConfigInner() {
     setCategoryConfigs,
     categoryFallbacks,
     setCategoryFallbacks,
-    defaultSchemaText,
+    omoslimPreset,
+    setOmoslimPreset,
+    omoslimAgents,
+    setOmoslimAgents,
     setDefaultSchemaText,
     defaultFormData,
     setDefaultFormData,
@@ -70,8 +78,12 @@ function SchemaConfigInner() {
     setCategoryConfigs,
     setCategoryFallbacks,
   };
+  const omoSlimHydrateSetters = {
+    setOmoslimPreset,
+    setOmoslimAgents,
+  };
 
-  // Generated JSON per tab.
+  // Generated JSON for this page's config.
   const opencodeJson = useMemo(
     () => buildOpencodeJson({ configuredProviders, defaultModel, smallModel, modelLimitOverrides, modelNameOverrides, providersData }),
     [configuredProviders, defaultModel, smallModel, modelLimitOverrides, modelNameOverrides, providersData]
@@ -80,19 +92,26 @@ function SchemaConfigInner() {
     () => buildOmoJson({ agentConfigs, agentFallbacks, categoryConfigs, categoryFallbacks }),
     [agentConfigs, agentFallbacks, categoryConfigs, categoryFallbacks]
   );
+  const omoSlimJson = useMemo(
+    () => buildOmoSlimJson({ preset: omoslimPreset, agents: omoslimAgents }),
+    [omoslimPreset, omoslimAgents]
+  );
   const defaultJson = useMemo(
     () => JSON.stringify(defaultFormData ?? {}, null, 2),
     [defaultFormData]
   );
 
-  const generatedJson = activeTab === 'opencode' ? opencodeJson : activeTab === 'omo' ? omoJson : defaultJson;
+  const generatedJson =
+    tab === 'opencode' ? opencodeJson
+      : tab === 'omo' ? omoJson
+        : tab === 'omoslim' ? omoSlimJson
+          : defaultJson;
 
   // Draft editing of the preview: show raw draft; valid JSON syncs back to form state.
   const [draft, setDraft] = useState<string | null>(null);
-  const [editingTab, setEditingTab] = useState<SchemaTab | null>(null);
   const [jsonError, setJsonError] = useState<string | null>(null);
 
-  const previewValue = editingTab === activeTab && draft !== null ? draft : generatedJson;
+  const previewValue = draft !== null ? draft : generatedJson;
 
   const validation = useMemo<ValidationResult>(() => {
     let parsed: unknown;
@@ -101,26 +120,21 @@ function SchemaConfigInner() {
     } catch (e) {
       return { valid: false, message: (e as Error).message };
     }
-    if (activeTab === 'opencode') return validateOpencodeSchema(parsed);
-    if (activeTab === 'omo') return validateOmoSchema(parsed);
+    if (tab === 'opencode') return validateOpencodeSchema(parsed);
+    if (tab === 'omo') return validateOmoSchema(parsed);
+    if (tab === 'omoslim') return validateOmoSlimSchema(parsed);
     return { valid: true, message: 'Valid JSON.' };
-  }, [previewValue, activeTab]);
-
-  useEffect(() => {
-    setDraft(null);
-    setEditingTab(null);
-    setJsonError(null);
-  }, [activeTab]);
+  }, [previewValue, tab]);
 
   const applyHydration = (parsed: any) => {
-    if (activeTab === 'opencode') hydrateOpencodeState(parsed, opencodeHydrateSetters);
-    else if (activeTab === 'omo') hydrateOmoState(parsed, omoHydrateSetters);
+    if (tab === 'opencode') hydrateOpencodeState(parsed, opencodeHydrateSetters);
+    else if (tab === 'omo') hydrateOmoState(parsed, omoHydrateSetters);
+    else if (tab === 'omoslim') hydrateOmoSlimState(parsed, omoSlimHydrateSetters);
     else setDefaultFormData(parsed);
   };
 
   const handlePreviewChange = (next: string) => {
     setDraft(next);
-    setEditingTab(activeTab);
     try {
       const parsed = parseJsonc(next);
       applyHydration(parsed);
@@ -131,10 +145,7 @@ function SchemaConfigInner() {
   };
 
   const handlePreviewBlur = () => {
-    if (!jsonError) {
-      setDraft(null);
-      setEditingTab(null);
-    }
+    if (!jsonError) setDraft(null);
   };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,14 +155,15 @@ function SchemaConfigInner() {
     reader.onload = (ev) => {
       const raw = ev.target?.result as string;
       try {
-        if (activeTab === 'default') {
+        if (tab === 'default') {
           // Importing a schema file for the generic form.
           parseJsonc(raw);
           setDefaultSchemaText(raw);
           setDefaultFormData({});
         } else {
           const json = parseJsonc(raw);
-          if (activeTab === 'opencode') hydrateOpencodeState(json, opencodeHydrateSetters);
+          if (tab === 'opencode') hydrateOpencodeState(json, opencodeHydrateSetters);
+          else if (tab === 'omoslim') hydrateOmoSlimState(json, omoSlimHydrateSetters);
           else hydrateOmoState(json, omoHydrateSetters);
         }
       } catch {
@@ -174,16 +186,18 @@ function SchemaConfigInner() {
   };
 
   const importTitle =
-    activeTab === 'default'
+    tab === 'default'
       ? 'Import a JSON Schema'
-      : activeTab === 'opencode'
+      : tab === 'opencode'
         ? 'Import existing opencode.json(c)'
-        : 'Import existing oh-my-opencode.json(c)';
+        : tab === 'omoslim'
+          ? 'Import existing oh-my-opencode-slim.json(c)'
+          : 'Import existing oh-my-opencode.json(c)';
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm">
       <div className="flex flex-col gap-3 border-b bg-muted/40 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="m-0 text-xl font-semibold">Configuration Generator</h2>
+        <h2 className="m-0 text-xl font-semibold">{TAB_META[tab].label}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} title={importTitle}>
             <Upload className="mr-1.5 h-3.5 w-3.5" />
@@ -200,28 +214,22 @@ function SchemaConfigInner() {
             className="hidden"
             onChange={handleImportFile}
           />
-          <Tabs value={activeTab} onValueChange={v => setActiveTab(v as SchemaTab)}>
-            <TabsList>
-              <TabsTrigger value="default">Default</TabsTrigger>
-              <TabsTrigger value="opencode">Opencode Config</TabsTrigger>
-              <TabsTrigger value="omo">Oh My Opencode</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
       </div>
 
-      <div className="flex min-h-[500px] flex-col lg:flex-row">
-        <div className="flex-1 overflow-y-auto border-b p-6 lg:border-b-0 lg:border-r">
-          {activeTab === 'default' && <DefaultPage />}
-          {activeTab === 'opencode' && <OpencodePage />}
-          {activeTab === 'omo' && <OmoPage />}
+      <div className="flex min-h-[500px] flex-col xl:flex-row">
+        <div className="min-w-0 flex-1 overflow-y-auto border-b p-6 xl:border-b-0 xl:border-r">
+          {tab === 'default' && <DefaultPage />}
+          {tab === 'opencode' && <OpencodePage />}
+          {tab === 'omo' && <OmoPage />}
+          {tab === 'omoslim' && <OmoSlimPage />}
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden border-t lg:border-l lg:border-t-0">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden border-t xl:border-l xl:border-t-0">
           <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-6 py-3">
             <span className="flex flex-wrap items-center gap-2 font-mono text-sm font-medium">
-              {TAB_META[activeTab].fileName}
-              {editingTab === activeTab && !jsonError && (
+              {TAB_META[tab].fileName}
+              {draft !== null && !jsonError && (
                 <Badge variant="secondary" className="text-[10px]">edited</Badge>
               )}
               <span
@@ -262,10 +270,10 @@ function SchemaConfigInner() {
   );
 }
 
-export default function SchemaConfigTool() {
+export default function SchemaConfigTool({ tab }: SchemaConfigToolProps) {
   return (
     <SchemaConfigProvider>
-      <SchemaConfigInner />
+      <SchemaConfigInner tab={tab} />
     </SchemaConfigProvider>
   );
 }

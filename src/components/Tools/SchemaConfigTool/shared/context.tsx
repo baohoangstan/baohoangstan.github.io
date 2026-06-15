@@ -5,12 +5,14 @@ import {
   DEFAULT_CATEGORY_CONFIGS,
   DEFAULT_MODEL,
   DEFAULT_SMALL_MODEL,
+  DEFAULT_OMOSLIM_PRESET,
+  DEFAULT_OMOSLIM_AGENTS,
 } from './constants';
 import { clearPersisted, loadPersisted, savePersisted } from './persistence';
 import { useProvidersData } from './useProvidersData';
-import type { ModelLimitOverride, PersistedState, Provider, ProviderConfig } from './types';
+import type { ModelLimitOverride, OmoSlimAgentConfig, PersistedState, Provider, ProviderConfig } from './types';
 
-export type SchemaTab = 'default' | 'opencode' | 'omo';
+export type SchemaTab = 'default' | 'opencode' | 'omo' | 'omoslim';
 
 type Setter<T> = React.Dispatch<React.SetStateAction<T>>;
 
@@ -47,6 +49,11 @@ export type SchemaConfigContextValue = {
   setCategoryFallbacks: Setter<Record<string, string>>;
   categoryProviders: Record<string, string>;
   setCategoryProviders: Setter<Record<string, string>>;
+  // oh-my-opencode-slim state
+  omoslimPreset: string;
+  setOmoslimPreset: Setter<string>;
+  omoslimAgents: Record<string, OmoSlimAgentConfig>;
+  setOmoslimAgents: Setter<Record<string, OmoSlimAgentConfig>>;
   // default (any-schema) tab state
   defaultSchemaUrl: string;
   setDefaultSchemaUrl: Setter<string>;
@@ -98,6 +105,12 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
   const [categoryFallbacks, setCategoryFallbacks] = useState<Record<string, string>>(persisted.categoryFallbacks ?? {});
   const [categoryProviders, setCategoryProviders] = useState<Record<string, string>>(persisted.categoryProviders ?? {});
 
+  // Oh My Opencode Slim state
+  const [omoslimPreset, setOmoslimPreset] = useState<string>(persisted.omoslimPreset ?? DEFAULT_OMOSLIM_PRESET);
+  const [omoslimAgents, setOmoslimAgents] = useState<Record<string, OmoSlimAgentConfig>>(
+    persisted.omoslimAgents ?? DEFAULT_OMOSLIM_AGENTS
+  );
+
   // Default (any-schema) tab state
   const [defaultSchemaUrl, setDefaultSchemaUrl] = useState<string>(persisted.defaultSchemaUrl ?? '');
   const [defaultSchemaText, setDefaultSchemaText] = useState<string>(persisted.defaultSchemaText ?? '');
@@ -118,6 +131,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       categoryConfigs,
       categoryFallbacks,
       categoryProviders,
+      omoslimPreset,
+      omoslimAgents,
       defaultSchemaUrl,
       defaultSchemaText,
       defaultFormData,
@@ -137,6 +152,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
     categoryConfigs,
     categoryFallbacks,
     categoryProviders,
+    omoslimPreset,
+    omoslimAgents,
     defaultSchemaUrl,
     defaultSchemaText,
     defaultFormData,
@@ -160,6 +177,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
     setCategoryConfigs(DEFAULT_CATEGORY_CONFIGS);
     setCategoryFallbacks({});
     setCategoryProviders({});
+    setOmoslimPreset(DEFAULT_OMOSLIM_PRESET);
+    setOmoslimAgents(DEFAULT_OMOSLIM_AGENTS);
     setDefaultSchemaUrl('');
     setDefaultSchemaText('');
     setDefaultFormData({});
@@ -195,6 +214,10 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       setCategoryFallbacks,
       categoryProviders,
       setCategoryProviders,
+      omoslimPreset,
+      setOmoslimPreset,
+      omoslimAgents,
+      setOmoslimAgents,
       defaultSchemaUrl,
       setDefaultSchemaUrl,
       defaultSchemaText,
@@ -220,6 +243,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       categoryConfigs,
       categoryFallbacks,
       categoryProviders,
+      omoslimPreset,
+      omoslimAgents,
       defaultSchemaUrl,
       defaultSchemaText,
       defaultFormData,

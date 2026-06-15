@@ -31,8 +31,15 @@ export type ModelLimitOverride = {
   maxTokens?: string;
 };
 
+export type OmoSlimAgentConfig = {
+  model?: string;
+  variant?: string;
+  skills?: string[];
+  mcps?: string[];
+};
+
 export type PersistedState = {
-  activeTab?: 'default' | 'opencode' | 'omo';
+  activeTab?: 'default' | 'opencode' | 'omo' | 'omoslim';
   configuredProviders?: Record<string, ProviderConfig>;
   defaultModel?: string;
   smallModel?: string;
@@ -45,6 +52,9 @@ export type PersistedState = {
   categoryConfigs?: Record<string, string>;
   categoryFallbacks?: Record<string, string>;
   categoryProviders?: Record<string, string>;
+  // Oh My Opencode Slim
+  omoslimPreset?: string;
+  omoslimAgents?: Record<string, OmoSlimAgentConfig>;
   // Default (any-schema) tab
   defaultSchemaUrl?: string;
   defaultSchemaText?: string;

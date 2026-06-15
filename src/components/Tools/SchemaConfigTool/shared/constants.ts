@@ -66,6 +66,22 @@ export const DEFAULT_PROVIDERS: Record<string, Provider> = {
 export const AGENTS = ['sisyphus', 'hephaestus', 'prometheus', 'oracle', 'librarian', 'explore', 'multimodal-looker', 'metis', 'momus', 'atlas'];
 export const CATEGORIES = ['visual-engineering', 'ultrabrain', 'deep', 'artistry', 'quick', 'unspecified-low', 'unspecified-high', 'writing'];
 
+// --- Oh My Opencode Slim (alvinunreal/oh-my-opencode-slim) ---
+export const OMOSLIM_SCHEMA_URL = 'https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json';
+export const OMOSLIM_AGENTS = ['orchestrator', 'oracle', 'librarian', 'explorer', 'designer', 'fixer'];
+export const OMOSLIM_VARIANTS = ['low', 'medium', 'high'];
+export const OMOSLIM_SKILLS = ['simplify', 'agent-browser', 'codemap', 'cartography'];
+export const OMOSLIM_MCPS = ['websearch', 'context7', 'grep_app'];
+export const DEFAULT_OMOSLIM_PRESET = 'openai';
+export const DEFAULT_OMOSLIM_AGENTS: Record<string, { model?: string; variant?: string; skills?: string[]; mcps?: string[] }> = {
+  orchestrator: { skills: ['*'], mcps: ['*'] },
+  oracle: { variant: 'high', skills: ['simplify'], mcps: [] },
+  librarian: { variant: 'low', skills: [], mcps: ['websearch', 'context7', 'grep_app'] },
+  explorer: { variant: 'low', skills: [], mcps: [] },
+  designer: { variant: 'medium', skills: ['agent-browser'], mcps: [] },
+  fixer: { variant: 'low', skills: [], mcps: [] },
+};
+
 export const DEFAULT_CONFIGURED_PROVIDERS: Record<string, ProviderConfig> = {
   openai: { enabled: true, models: ['gpt-4o', 'gpt-4o-mini'] },
   anthropic: { enabled: true, models: ['claude-3-5-sonnet-20241022'] },

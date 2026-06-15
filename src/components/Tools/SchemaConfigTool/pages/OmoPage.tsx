@@ -264,7 +264,7 @@ export default function OmoPage() {
           <span className="text-sm font-semibold">Provider source</span>
           <span className="text-xs text-muted-foreground">
             {omoProviders.length
-              ? `${omoProviders.length} provider(s) available — configured in the Opencode Config tab.`
+              ? `${omoProviders.length} provider(s) available — configured in the Opencode Config page.`
               : 'No providers yet. Import an opencode.json or load your saved config.'}
           </span>
         </div>
