@@ -38,8 +38,33 @@ export type OmoSlimAgentConfig = {
   mcps?: string[];
 };
 
+export type KiloTri = '' | 'true' | 'false';
+export type KiloPermissionAction = '' | 'allow' | 'ask' | 'deny';
+
+export type KiloConfig = {
+  model: string;
+  small_model: string;
+  default_agent: string;
+  username: string;
+  share: '' | 'manual' | 'auto' | 'disabled';
+  autoupdate: '' | 'true' | 'false' | 'notify';
+  snapshot: KiloTri;
+  compactionAuto: KiloTri;
+  compactionPrune: KiloTri;
+  instructions: string[];
+  plugin: string[];
+  skillPaths: string[];
+  skillUrls: string[];
+  disabledProviders: string[];
+  enabledProviders: string[];
+  permissions: Record<string, KiloPermissionAction>;
+  // Preserve object/glob-form and MCP/unknown permission entries that the
+  // scalar form cannot represent, so imported configs round-trip losslessly.
+  extraPermissions: Record<string, unknown>;
+};
+
 export type PersistedState = {
-  activeTab?: 'default' | 'opencode' | 'omo' | 'omoslim';
+  activeTab?: 'default' | 'opencode' | 'omo' | 'omoslim' | 'kilo';
   configuredProviders?: Record<string, ProviderConfig>;
   defaultModel?: string;
   smallModel?: string;
@@ -55,6 +80,8 @@ export type PersistedState = {
   // Oh My Opencode Slim
   omoslimPreset?: string;
   omoslimAgents?: Record<string, OmoSlimAgentConfig>;
+  // Kilo
+  kiloConfig?: KiloConfig;
   // Default (any-schema) tab
   defaultSchemaUrl?: string;
   defaultSchemaText?: string;

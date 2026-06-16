@@ -6,21 +6,24 @@ import { Badge } from '@site/src/components/ui/badge';
 import { SchemaConfigProvider, useSchemaConfig, type SchemaTab } from './shared/context';
 import { JsonPreview } from './shared/JsonPreview';
 import { parseJsonc } from './shared/jsonc';
-import { validateOpencodeSchema, validateOmoSchema, validateOmoSlimSchema } from './shared/validators';
+import { validateOpencodeSchema, validateOmoSchema, validateOmoSlimSchema, validateKiloSchema } from './shared/validators';
 import { buildOpencodeJson, hydrateOpencodeState } from './shared/opencode';
 import { buildOmoJson, hydrateOmoState } from './shared/omo';
 import { buildOmoSlimJson, hydrateOmoSlimState } from './shared/omoSlim';
+import { buildKiloJson, hydrateKiloState } from './shared/kilo';
 import type { ValidationResult } from './shared/types';
 import DefaultPage from './pages/DefaultPage';
 import OpencodePage from './pages/OpencodePage';
 import OmoPage from './pages/OmoPage';
 import OmoSlimPage from './pages/OmoSlimPage';
+import KiloPage from './pages/KiloPage';
 
 const TAB_META: Record<SchemaTab, { label: string; fileName: string }> = {
   default: { label: 'General', fileName: 'schema.json' },
   opencode: { label: 'Opencode Config', fileName: 'opencode.json' },
   omo: { label: 'Oh My Opencode', fileName: 'oh-my-opencode.json' },
   omoslim: { label: 'Oh My Opencode Slim', fileName: 'oh-my-opencode-slim.json' },
+  kilo: { label: 'Kilo Config', fileName: 'kilo.jsonc' },
 };
 
 type SchemaConfigToolProps = {
@@ -55,6 +58,8 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     setOmoslimPreset,
     omoslimAgents,
     setOmoslimAgents,
+    kiloConfig,
+    setKiloConfig,
     setDefaultSchemaText,
     defaultFormData,
     setDefaultFormData,
@@ -82,6 +87,9 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     setOmoslimPreset,
     setOmoslimAgents,
   };
+  const kiloHydrateSetters = {
+    setKiloConfig,
+  };
 
   // Generated JSON for this page's config.
   const opencodeJson = useMemo(
@@ -96,6 +104,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     () => buildOmoSlimJson({ preset: omoslimPreset, agents: omoslimAgents }),
     [omoslimPreset, omoslimAgents]
   );
+  const kiloJson = useMemo(() => buildKiloJson(kiloConfig), [kiloConfig]);
   const defaultJson = useMemo(
     () => JSON.stringify(defaultFormData ?? {}, null, 2),
     [defaultFormData]
@@ -105,7 +114,8 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     tab === 'opencode' ? opencodeJson
       : tab === 'omo' ? omoJson
         : tab === 'omoslim' ? omoSlimJson
-          : defaultJson;
+          : tab === 'kilo' ? kiloJson
+            : defaultJson;
 
   // Draft editing of the preview: show raw draft; valid JSON syncs back to form state.
   const [draft, setDraft] = useState<string | null>(null);
@@ -123,6 +133,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     if (tab === 'opencode') return validateOpencodeSchema(parsed);
     if (tab === 'omo') return validateOmoSchema(parsed);
     if (tab === 'omoslim') return validateOmoSlimSchema(parsed);
+    if (tab === 'kilo') return validateKiloSchema(parsed);
     return { valid: true, message: 'Valid JSON.' };
   }, [previewValue, tab]);
 
@@ -130,6 +141,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     if (tab === 'opencode') hydrateOpencodeState(parsed, opencodeHydrateSetters);
     else if (tab === 'omo') hydrateOmoState(parsed, omoHydrateSetters);
     else if (tab === 'omoslim') hydrateOmoSlimState(parsed, omoSlimHydrateSetters);
+    else if (tab === 'kilo') hydrateKiloState(parsed, kiloHydrateSetters);
     else setDefaultFormData(parsed);
   };
 
@@ -164,6 +176,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
           const json = parseJsonc(raw);
           if (tab === 'opencode') hydrateOpencodeState(json, opencodeHydrateSetters);
           else if (tab === 'omoslim') hydrateOmoSlimState(json, omoSlimHydrateSetters);
+          else if (tab === 'kilo') hydrateKiloState(json, kiloHydrateSetters);
           else hydrateOmoState(json, omoHydrateSetters);
         }
       } catch {
@@ -192,7 +205,9 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
         ? 'Import existing opencode.json(c)'
         : tab === 'omoslim'
           ? 'Import existing oh-my-opencode-slim.json(c)'
-          : 'Import existing oh-my-opencode.json(c)';
+          : tab === 'kilo'
+            ? 'Import existing kilo.json(c)'
+            : 'Import existing oh-my-opencode.json(c)';
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -223,6 +238,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
           {tab === 'opencode' && <OpencodePage />}
           {tab === 'omo' && <OmoPage />}
           {tab === 'omoslim' && <OmoSlimPage />}
+          {tab === 'kilo' && <KiloPage />}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden border-t xl:border-l xl:border-t-0">

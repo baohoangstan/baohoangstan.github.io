@@ -70,6 +70,41 @@ function validateOmoSlimAgentMap(map: Record<string, any>, path: string): Valida
   return null;
 }
 
+export function validateKiloSchema(root: unknown): ValidationResult {
+  if (!isPlainObject(root)) return { valid: false, message: 'Root must be an object.' };
+  for (const k of ['model', 'small_model', 'default_agent', 'username'] as const) {
+    if (root[k] !== undefined && typeof root[k] !== 'string')
+      return { valid: false, message: `"${k}" must be a string.` };
+  }
+  if (root.share !== undefined && !['manual', 'auto', 'disabled'].includes(root.share as string))
+    return { valid: false, message: '"share" must be "manual", "auto", or "disabled".' };
+  if (root.autoupdate !== undefined && typeof root.autoupdate !== 'boolean' && root.autoupdate !== 'notify')
+    return { valid: false, message: '"autoupdate" must be a boolean or "notify".' };
+  if (root.snapshot !== undefined && typeof root.snapshot !== 'boolean')
+    return { valid: false, message: '"snapshot" must be a boolean.' };
+  for (const k of ['instructions', 'plugin', 'disabled_providers', 'enabled_providers'] as const) {
+    if (root[k] !== undefined && !Array.isArray(root[k]))
+      return { valid: false, message: `"${k}" must be an array.` };
+  }
+  if (root.compaction !== undefined) {
+    if (!isPlainObject(root.compaction)) return { valid: false, message: '"compaction" must be an object.' };
+    for (const k of ['auto', 'prune'] as const) {
+      if (root.compaction[k] !== undefined && typeof root.compaction[k] !== 'boolean')
+        return { valid: false, message: `compaction.${k} must be a boolean.` };
+    }
+  }
+  if (root.skills !== undefined) {
+    if (!isPlainObject(root.skills)) return { valid: false, message: '"skills" must be an object.' };
+    for (const k of ['paths', 'urls'] as const) {
+      if (root.skills[k] !== undefined && !Array.isArray(root.skills[k]))
+        return { valid: false, message: `skills.${k} must be an array.` };
+    }
+  }
+  if (root.permission !== undefined && !isPlainObject(root.permission))
+    return { valid: false, message: '"permission" must be an object.' };
+  return { valid: true, message: 'Matches kilo schema.' };
+}
+
 export function validateOmoSlimSchema(root: unknown): ValidationResult {
   if (!isPlainObject(root)) return { valid: false, message: 'Root must be an object.' };
   if (root.preset !== undefined && typeof root.preset !== 'string')

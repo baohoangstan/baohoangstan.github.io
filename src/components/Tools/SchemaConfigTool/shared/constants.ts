@@ -1,4 +1,4 @@
-import type { Provider, ProviderConfig } from './types';
+import type { KiloConfig, Provider, ProviderConfig } from './types';
 
 export const STORAGE_KEY = 'schemaConfigTool:v1';
 
@@ -97,3 +97,38 @@ export const DEFAULT_CATEGORY_CONFIGS: Record<string, string> = {
 
 export const DEFAULT_MODEL = 'anthropic/claude-3-5-sonnet-20241022';
 export const DEFAULT_SMALL_MODEL = 'openai/gpt-4o-mini';
+
+// --- Kilo CLI (kilo.json / kilo.jsonc) ---
+export const KILO_SCHEMA_URL = 'https://app.kilo.ai/config.json';
+export const KILO_PERMISSION_TOOLS = [
+  'read',
+  'edit',
+  'bash',
+  'glob',
+  'grep',
+  'list',
+  'task',
+  'webfetch',
+  'websearch',
+  'skill',
+  'external_directory',
+];
+export const DEFAULT_KILO_CONFIG: KiloConfig = {
+  model: '',
+  small_model: '',
+  default_agent: '',
+  username: '',
+  share: '',
+  autoupdate: '',
+  snapshot: '',
+  compactionAuto: '',
+  compactionPrune: '',
+  instructions: [],
+  plugin: [],
+  skillPaths: [],
+  skillUrls: [],
+  disabledProviders: [],
+  enabledProviders: [],
+  permissions: Object.fromEntries(KILO_PERMISSION_TOOLS.map(t => [t, '' as const])),
+  extraPermissions: {},
+};

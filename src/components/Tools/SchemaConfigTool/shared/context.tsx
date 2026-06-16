@@ -7,12 +7,13 @@ import {
   DEFAULT_SMALL_MODEL,
   DEFAULT_OMOSLIM_PRESET,
   DEFAULT_OMOSLIM_AGENTS,
+  DEFAULT_KILO_CONFIG,
 } from './constants';
 import { clearPersisted, loadPersisted, savePersisted } from './persistence';
 import { useProvidersData } from './useProvidersData';
-import type { ModelLimitOverride, OmoSlimAgentConfig, PersistedState, Provider, ProviderConfig } from './types';
+import type { KiloConfig, ModelLimitOverride, OmoSlimAgentConfig, PersistedState, Provider, ProviderConfig } from './types';
 
-export type SchemaTab = 'default' | 'opencode' | 'omo' | 'omoslim';
+export type SchemaTab = 'default' | 'opencode' | 'omo' | 'omoslim' | 'kilo';
 
 type Setter<T> = React.Dispatch<React.SetStateAction<T>>;
 
@@ -54,6 +55,9 @@ export type SchemaConfigContextValue = {
   setOmoslimPreset: Setter<string>;
   omoslimAgents: Record<string, OmoSlimAgentConfig>;
   setOmoslimAgents: Setter<Record<string, OmoSlimAgentConfig>>;
+  // kilo state
+  kiloConfig: KiloConfig;
+  setKiloConfig: Setter<KiloConfig>;
   // default (any-schema) tab state
   defaultSchemaUrl: string;
   setDefaultSchemaUrl: Setter<string>;
@@ -111,6 +115,9 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
     persisted.omoslimAgents ?? DEFAULT_OMOSLIM_AGENTS
   );
 
+  // Kilo state
+  const [kiloConfig, setKiloConfig] = useState<KiloConfig>(persisted.kiloConfig ?? DEFAULT_KILO_CONFIG);
+
   // Default (any-schema) tab state
   const [defaultSchemaUrl, setDefaultSchemaUrl] = useState<string>(persisted.defaultSchemaUrl ?? '');
   const [defaultSchemaText, setDefaultSchemaText] = useState<string>(persisted.defaultSchemaText ?? '');
@@ -133,6 +140,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       categoryProviders,
       omoslimPreset,
       omoslimAgents,
+      kiloConfig,
       defaultSchemaUrl,
       defaultSchemaText,
       defaultFormData,
@@ -154,6 +162,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
     categoryProviders,
     omoslimPreset,
     omoslimAgents,
+    kiloConfig,
     defaultSchemaUrl,
     defaultSchemaText,
     defaultFormData,
@@ -179,6 +188,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
     setCategoryProviders({});
     setOmoslimPreset(DEFAULT_OMOSLIM_PRESET);
     setOmoslimAgents(DEFAULT_OMOSLIM_AGENTS);
+    setKiloConfig(DEFAULT_KILO_CONFIG);
     setDefaultSchemaUrl('');
     setDefaultSchemaText('');
     setDefaultFormData({});
@@ -218,6 +228,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       setOmoslimPreset,
       omoslimAgents,
       setOmoslimAgents,
+      kiloConfig,
+      setKiloConfig,
       defaultSchemaUrl,
       setDefaultSchemaUrl,
       defaultSchemaText,
@@ -245,6 +257,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       categoryProviders,
       omoslimPreset,
       omoslimAgents,
+      kiloConfig,
       defaultSchemaUrl,
       defaultSchemaText,
       defaultFormData,
