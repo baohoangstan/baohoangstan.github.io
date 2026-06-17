@@ -84,6 +84,9 @@ export const DEFAULT_OMOSLIM_AGENTS: Record<string, { model?: string; variant?: 
   designer: { variant: 'medium', skills: ['agent-browser'], mcps: [] },
   fixer: { variant: 'low', skills: [], mcps: [] },
 };
+export const DEFAULT_OMOSLIM_PRESETS: Record<string, Record<string, { model?: string; variant?: string; skills?: string[]; mcps?: string[] }>> = {
+  [DEFAULT_OMOSLIM_PRESET]: DEFAULT_OMOSLIM_AGENTS,
+};
 
 export const DEFAULT_CONFIGURED_PROVIDERS: Record<string, ProviderConfig> = {
   openai: { enabled: true, models: ['gpt-4o', 'gpt-4o-mini'] },

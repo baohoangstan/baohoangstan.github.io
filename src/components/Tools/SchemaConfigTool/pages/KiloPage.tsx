@@ -15,6 +15,10 @@ import type { KiloConfig } from '../shared/types';
 
 type Option = { value: string; label: string };
 
+// Radix <Select.Item> forbids empty-string values, so map the canonical
+// "" (default) value to a non-empty sentinel inside the Select.
+const EMPTY_VALUE = '__default__';
+
 function SelectField({
   label,
   value,
@@ -31,13 +35,16 @@ function SelectField({
   return (
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
-      <Select value={value} onValueChange={onChange}>
+      <Select
+        value={value === '' ? EMPTY_VALUE : value}
+        onValueChange={v => onChange(v === EMPTY_VALUE ? '' : v)}
+      >
         <SelectTrigger className="h-9 text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {options.map(o => (
-            <SelectItem key={o.value} value={o.value}>
+            <SelectItem key={o.value} value={o.value === '' ? EMPTY_VALUE : o.value}>
               {o.label}
             </SelectItem>
           ))}

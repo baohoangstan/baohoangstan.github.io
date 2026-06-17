@@ -78,6 +78,9 @@ export type PersistedState = {
   categoryFallbacks?: Record<string, string>;
   categoryProviders?: Record<string, string>;
   // Oh My Opencode Slim
+  omoslimPresets?: Record<string, Record<string, OmoSlimAgentConfig>>;
+  omoslimDefaultPreset?: string;
+  // Legacy single-preset fields (migrated into the multi-preset model on load).
   omoslimPreset?: string;
   omoslimAgents?: Record<string, OmoSlimAgentConfig>;
   // Kilo

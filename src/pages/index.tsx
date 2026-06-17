@@ -2,6 +2,7 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
+import HomepageConnect from '@site/src/components/HomepageConnect';
 import Heading from '@theme/Heading';
 import { buttonVariants } from '@site/src/components/ui/button';
 import { cn } from '@site/src/lib/utils';
@@ -57,6 +58,7 @@ export default function Home(): JSX.Element {
       <HomepageHeader />
       <main className="bg-background">
         <HomepageFeatures />
+        <HomepageConnect />
       </main>
     </Layout>
   );

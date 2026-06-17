@@ -54,10 +54,10 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     setCategoryConfigs,
     categoryFallbacks,
     setCategoryFallbacks,
-    omoslimPreset,
-    setOmoslimPreset,
-    omoslimAgents,
-    setOmoslimAgents,
+    omoslimPresets,
+    setOmoslimPresets,
+    omoslimDefaultPreset,
+    setOmoslimDefaultPreset,
     kiloConfig,
     setKiloConfig,
     setDefaultSchemaText,
@@ -84,8 +84,8 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     setCategoryFallbacks,
   };
   const omoSlimHydrateSetters = {
-    setOmoslimPreset,
-    setOmoslimAgents,
+    setOmoslimPresets,
+    setOmoslimDefaultPreset,
   };
   const kiloHydrateSetters = {
     setKiloConfig,
@@ -101,8 +101,8 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     [agentConfigs, agentFallbacks, categoryConfigs, categoryFallbacks]
   );
   const omoSlimJson = useMemo(
-    () => buildOmoSlimJson({ preset: omoslimPreset, agents: omoslimAgents }),
-    [omoslimPreset, omoslimAgents]
+    () => buildOmoSlimJson({ defaultPreset: omoslimDefaultPreset, presets: omoslimPresets }),
+    [omoslimDefaultPreset, omoslimPresets]
   );
   const kiloJson = useMemo(() => buildKiloJson(kiloConfig), [kiloConfig]);
   const defaultJson = useMemo(

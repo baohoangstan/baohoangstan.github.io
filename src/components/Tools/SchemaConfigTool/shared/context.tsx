@@ -6,7 +6,7 @@ import {
   DEFAULT_MODEL,
   DEFAULT_SMALL_MODEL,
   DEFAULT_OMOSLIM_PRESET,
-  DEFAULT_OMOSLIM_AGENTS,
+  DEFAULT_OMOSLIM_PRESETS,
   DEFAULT_KILO_CONFIG,
 } from './constants';
 import { clearPersisted, loadPersisted, savePersisted } from './persistence';
@@ -50,11 +50,11 @@ export type SchemaConfigContextValue = {
   setCategoryFallbacks: Setter<Record<string, string>>;
   categoryProviders: Record<string, string>;
   setCategoryProviders: Setter<Record<string, string>>;
-  // oh-my-opencode-slim state
-  omoslimPreset: string;
-  setOmoslimPreset: Setter<string>;
-  omoslimAgents: Record<string, OmoSlimAgentConfig>;
-  setOmoslimAgents: Setter<Record<string, OmoSlimAgentConfig>>;
+  // oh-my-opencode-slim state (multi-preset)
+  omoslimPresets: Record<string, Record<string, OmoSlimAgentConfig>>;
+  setOmoslimPresets: Setter<Record<string, Record<string, OmoSlimAgentConfig>>>;
+  omoslimDefaultPreset: string;
+  setOmoslimDefaultPreset: Setter<string>;
   // kilo state
   kiloConfig: KiloConfig;
   setKiloConfig: Setter<KiloConfig>;
@@ -109,10 +109,15 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
   const [categoryFallbacks, setCategoryFallbacks] = useState<Record<string, string>>(persisted.categoryFallbacks ?? {});
   const [categoryProviders, setCategoryProviders] = useState<Record<string, string>>(persisted.categoryProviders ?? {});
 
-  // Oh My Opencode Slim state
-  const [omoslimPreset, setOmoslimPreset] = useState<string>(persisted.omoslimPreset ?? DEFAULT_OMOSLIM_PRESET);
-  const [omoslimAgents, setOmoslimAgents] = useState<Record<string, OmoSlimAgentConfig>>(
-    persisted.omoslimAgents ?? DEFAULT_OMOSLIM_AGENTS
+  // Oh My Opencode Slim state (multi-preset, migrates legacy single-preset data)
+  const [omoslimPresets, setOmoslimPresets] = useState<Record<string, Record<string, OmoSlimAgentConfig>>>(
+    persisted.omoslimPresets ??
+      (persisted.omoslimAgents
+        ? { [persisted.omoslimPreset ?? DEFAULT_OMOSLIM_PRESET]: persisted.omoslimAgents }
+        : DEFAULT_OMOSLIM_PRESETS)
+  );
+  const [omoslimDefaultPreset, setOmoslimDefaultPreset] = useState<string>(
+    persisted.omoslimDefaultPreset ?? persisted.omoslimPreset ?? DEFAULT_OMOSLIM_PRESET
   );
 
   // Kilo state
@@ -138,8 +143,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       categoryConfigs,
       categoryFallbacks,
       categoryProviders,
-      omoslimPreset,
-      omoslimAgents,
+      omoslimPresets,
+      omoslimDefaultPreset,
       kiloConfig,
       defaultSchemaUrl,
       defaultSchemaText,
@@ -160,8 +165,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
     categoryConfigs,
     categoryFallbacks,
     categoryProviders,
-    omoslimPreset,
-    omoslimAgents,
+    omoslimPresets,
+    omoslimDefaultPreset,
     kiloConfig,
     defaultSchemaUrl,
     defaultSchemaText,
@@ -186,8 +191,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
     setCategoryConfigs(DEFAULT_CATEGORY_CONFIGS);
     setCategoryFallbacks({});
     setCategoryProviders({});
-    setOmoslimPreset(DEFAULT_OMOSLIM_PRESET);
-    setOmoslimAgents(DEFAULT_OMOSLIM_AGENTS);
+    setOmoslimPresets(DEFAULT_OMOSLIM_PRESETS);
+    setOmoslimDefaultPreset(DEFAULT_OMOSLIM_PRESET);
     setKiloConfig(DEFAULT_KILO_CONFIG);
     setDefaultSchemaUrl('');
     setDefaultSchemaText('');
@@ -224,10 +229,10 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       setCategoryFallbacks,
       categoryProviders,
       setCategoryProviders,
-      omoslimPreset,
-      setOmoslimPreset,
-      omoslimAgents,
-      setOmoslimAgents,
+      omoslimPresets,
+      setOmoslimPresets,
+      omoslimDefaultPreset,
+      setOmoslimDefaultPreset,
       kiloConfig,
       setKiloConfig,
       defaultSchemaUrl,
@@ -255,8 +260,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       categoryConfigs,
       categoryFallbacks,
       categoryProviders,
-      omoslimPreset,
-      omoslimAgents,
+      omoslimPresets,
+      omoslimDefaultPreset,
       kiloConfig,
       defaultSchemaUrl,
       defaultSchemaText,
