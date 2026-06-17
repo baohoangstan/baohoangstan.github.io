@@ -2,82 +2,195 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================================
+   Cloud Dancer (PANTONE 11-4201) — serene, airy warm-white + soft sky blue.
+   shadcn tokens are space-separated HSL triplets ("H S% L%") consumed via
+   hsl(var(--x)). Do NOT add commas or hsl() wrappers here.
+   ========================================================================= */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 20 14.3% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 20 14.3% 4.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 20 14.3% 4.1%;
-    --primary: 24 9.8% 10%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 60 4.8% 95.9%;
-    --secondary-foreground: 24 9.8% 10%;
-    --muted: 60 4.8% 95.9%;
-    --muted-foreground: 25 5.3% 44.7%;
-    --accent: 60 4.8% 95.9%;
-    --accent-foreground: 24 9.8% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 20 5.9% 90%;
-    --input: 20 5.9% 90%;
-    --ring: 20 14.3% 4.1%;
-    --radius: 0.5rem;
+    /* Surfaces — warm Cloud Dancer page, lighter floating cards */
+    --background: 42 22% 95%;
+    --foreground: 28 16% 16%;
+    --card: 42 40% 98%;
+    --card-foreground: 28 16% 16%;
+    --popover: 42 40% 98%;
+    --popover-foreground: 28 16% 16%;
+
+    /* Sky-blue accent (calm, slightly desaturated) */
+    --primary: 206 74% 44%;
+    --primary-foreground: 42 40% 99%;
+
+    /* Warm neutral support tones */
+    --secondary: 42 20% 91%;
+    --secondary-foreground: 28 14% 24%;
+    --muted: 42 20% 91%;
+    --muted-foreground: 30 8% 40%;
+
+    /* Airy sky tint for hover / quiet interactive backgrounds */
+    --accent: 204 56% 90%;
+    --accent-foreground: 206 72% 26%;
+
+    --destructive: 6 72% 52%;
+    --destructive-foreground: 42 40% 99%;
+
+    /* Soft, warm-tinted, low-contrast lines */
+    --border: 40 18% 85%;
+    --input: 40 16% 83%;
+    --ring: 206 74% 48%;
+
+    --radius: 0.75rem;
   }
+
   [data-theme='dark'] {
-    --background: 20 14.3% 4.1%;
-    --foreground: 60 9.1% 97.8%;
-    --card: 20 14.3% 4.1%;
-    --card-foreground: 60 9.1% 97.8%;
-    --popover: 20 14.3% 4.1%;
-    --popover-foreground: 60 9.1% 97.8%;
-    --primary: 60 9.1% 97.8%;
-    --primary-foreground: 24 9.8% 10%;
-    --secondary: 12 6.5% 15.1%;
-    --secondary-foreground: 60 9.1% 97.8%;
-    --muted: 12 6.5% 15.1%;
-    --muted-foreground: 24 5.4% 63.9%;
-    --accent: 12 6.5% 15.1%;
-    --accent-foreground: 60 9.1% 97.8%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 12 6.5% 15.1%;
-    --input: 12 6.5% 15.1%;
-    --ring: 24 5.7% 82.9%;
+    /* Serene deep night-sky slate (blue-tinted, never pure black) */
+    --background: 216 28% 11%;
+    --foreground: 40 30% 92%;
+    --card: 215 24% 15%;
+    --card-foreground: 40 30% 92%;
+    --popover: 215 24% 15%;
+    --popover-foreground: 40 30% 92%;
+
+    /* Lifted sky blue for contrast on dark surfaces */
+    --primary: 204 80% 62%;
+    --primary-foreground: 216 40% 12%;
+
+    --secondary: 215 20% 20%;
+    --secondary-foreground: 40 30% 92%;
+    --muted: 215 20% 20%;
+    --muted-foreground: 215 14% 66%;
+
+    --accent: 210 40% 22%;
+    --accent-foreground: 204 80% 80%;
+
+    --destructive: 0 62% 46%;
+    --destructive-foreground: 40 30% 95%;
+
+    --border: 215 18% 23%;
+    --input: 215 18% 25%;
+    --ring: 204 80% 62%;
   }
 }
 
+/* =========================================================================
+   Infima vars — drive all Docusaurus chrome (navbar, sidebar, links, TOC,
+   footer, code). These take real color values, not the triplet format.
+   ========================================================================= */
+
 :root {
-  --ifm-color-primary: #1c1917;
-  --ifm-color-primary-dark: #171311;
-  --ifm-color-primary-darker: #0c0a09;
-  --ifm-color-primary-darkest: #050403;
-  --ifm-color-primary-light: #292524;
-  --ifm-color-primary-lighter: #44403c;
-  --ifm-color-primary-lightest: #57534e;
-  --ifm-background-color: #ffffff;
-  --ifm-background-surface-color: #fafaf9;
-  --ifm-navbar-background-color: #ffffff;
-  --ifm-footer-background-color: #1c1917;
+  /* Sky-blue ramp for links / buttons across docs & blog */
+  --ifm-color-primary: #1d7bc3;
+  --ifm-color-primary-dark: #1a6fb0;
+  --ifm-color-primary-darker: #186aa6;
+  --ifm-color-primary-darkest: #145789;
+  --ifm-color-primary-light: #2986d0;
+  --ifm-color-primary-lighter: #3a8fd3;
+  --ifm-color-primary-lightest: #5ba3dd;
+
+  /* Surfaces */
+  --ifm-background-color: #f5f3ef;
+  --ifm-background-surface-color: #fcfbf8;
+  --ifm-navbar-background-color: rgba(252, 251, 248, 0.82);
+  --ifm-footer-background-color: #18222e;
+
+  /* Borders / cards / TOC */
   --ifm-toc-border-color: hsl(var(--border));
   --ifm-color-emphasis-200: hsl(var(--border));
   --ifm-card-background-color: hsl(var(--card));
+
+  /* Sidebar menu — sky tint for hover / active */
+  --ifm-menu-color-background-hover: hsl(var(--accent) / 0.55);
+  --ifm-menu-color-background-active: hsl(var(--accent));
+  --ifm-menu-color-active: hsl(var(--primary));
+  --ifm-navbar-link-hover-color: hsl(var(--primary));
+
+  /* Calmer rhythm */
+  --ifm-line-height-base: 1.7;
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --docusaurus-highlighted-code-line-bg: hsl(206 74% 44% / 0.1);
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #fafaf9;
-  --ifm-color-primary-dark: #e7e5e4;
-  --ifm-color-primary-darker: #d6d3d1;
-  --ifm-color-primary-darkest: #a8a29e;
-  --ifm-color-primary-light: #ffffff;
-  --ifm-color-primary-lighter: #ffffff;
-  --ifm-color-primary-lightest: #ffffff;
-  --ifm-background-color: #1c1917;
-  --ifm-background-surface-color: #0c0a09;
-  --ifm-navbar-background-color: #1c1917;
-  --ifm-footer-background-color: #0c0a09;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #51aeec;
+  --ifm-color-primary-dark: #3aa0e8;
+  --ifm-color-primary-darker: #2c98e6;
+  --ifm-color-primary-darkest: #1a7dc6;
+  --ifm-color-primary-light: #68bcf0;
+  --ifm-color-primary-lighter: #76c2f1;
+  --ifm-color-primary-lightest: #9bd2f5;
+
+  --ifm-background-color: #131a23;
+  --ifm-background-surface-color: #1b2531;
+  --ifm-navbar-background-color: rgba(19, 26, 35, 0.78);
+  --ifm-footer-background-color: #0c121a;
+
+  --docusaurus-highlighted-code-line-bg: hsl(204 80% 62% / 0.16);
+}
+
+/* =========================================================================
+   Polish — soft depth, calm motion, airy chrome.
+   ========================================================================= */
+
+/* Floating, borderless navbar with a billowy shadow + glassy blur */
+.navbar {
+  border-bottom: none;
+  box-shadow: 0 1px 0 hsl(40 18% 85% / 0.6),
+    0 8px 30px -12px hsl(215 30% 25% / 0.12);
+  -webkit-backdrop-filter: saturate(150%) blur(12px);
+  backdrop-filter: saturate(150%) blur(12px);
+}
+
+[data-theme='dark'] .navbar {
+  box-shadow: 0 1px 0 hsl(215 18% 23% / 0.7),
+    0 8px 30px -12px hsl(0 0% 0% / 0.5);
+}
+
+/* Soft sidebar separation instead of a hard line */
+.theme-doc-sidebar-container {
+  border-right: none !important;
+  box-shadow: 1px 0 24px -16px hsl(215 30% 25% / 0.18);
+}
+
+/* Active sidebar item reads in the sky accent */
+.menu__link--active:not(.menu__link--sublist) {
+  font-weight: 600;
+}
+
+/* Gentle link transitions everywhere */
+a {
+  transition: color 0.18s ease;
+}
+
+/* Calmer, sky-tinted focus rings */
+a:focus-visible,
+button:focus-visible,
+.navbar__link:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* On-theme text selection */
+::selection {
+  background: hsl(var(--primary) / 0.18);
+}
+
+/* Soft, unobtrusive scrollbar */
+* {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.55);
+  background-clip: content-box;
 }
