@@ -157,12 +157,18 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
   };
 
   const handlePreviewBlur = () => {
-    if (!jsonError) setDraft(null);
+    // Keep the user's draft (and the "edited" badge) when it diverges from the
+    // generated JSON; only drop it once it matches the canonical output.
+    if (draft !== null && draft === generatedJson) setDraft(null);
   };
+
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState(false);
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImportError(null);
     const reader = new FileReader();
     reader.onload = (ev) => {
       const raw = ev.target?.result as string;
@@ -179,8 +185,12 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
           else if (tab === 'kilo') hydrateKiloState(json, kiloHydrateSetters);
           else hydrateOmoState(json, omoHydrateSetters);
         }
+        setImportError(null);
+        setImportSuccess(true);
+        window.setTimeout(() => setImportSuccess(false), 1500);
       } catch {
-        alert('Invalid JSON/JSONC file.');
+        setImportSuccess(false);
+        setImportError('Invalid JSON/JSONC file.');
       }
     };
     reader.readAsText(file);
@@ -214,13 +224,25 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
       <div className="flex flex-col gap-3 border-b bg-muted/40 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="m-0 text-xl font-semibold">{TAB_META[tab].label}</h2>
         <div className="flex flex-wrap items-center gap-2">
+          {importError && (
+            <p className="m-0 flex items-center gap-1.5 text-xs text-destructive dark:text-red-400">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              {importError}
+            </p>
+          )}
+          {importSuccess && (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <Check className="h-3.5 w-3.5 shrink-0" />
+              Imported
+            </span>
+          )}
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} title={importTitle}>
             <Upload className="mr-1.5 h-3.5 w-3.5" />
             Import
           </Button>
-          <Button variant="outline" size="sm" onClick={resetAll} title="Reset all configuration to defaults">
+          <Button variant="outline" size="sm" onClick={resetAll} title="Reset all configuration (every tab) to defaults">
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            Reset
+            Reset all
           </Button>
           <input
             ref={fileInputRef}
@@ -232,7 +254,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
         </div>
       </div>
 
-      <div className="flex min-h-[500px] flex-col xl:flex-row">
+      <div className="flex min-h-[500px] flex-col xl:h-[min(80vh,720px)] xl:flex-row">
         <div className="min-w-0 flex-1 overflow-y-auto border-b p-6 xl:border-b-0 xl:border-r">
           {tab === 'default' && <DefaultPage />}
           {tab === 'opencode' && <OpencodePage />}
@@ -245,7 +267,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
           <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-6 py-3">
             <span className="flex flex-wrap items-center gap-2 font-mono text-sm font-medium">
               {TAB_META[tab].fileName}
-              {draft !== null && !jsonError && (
+              {draft !== null && (
                 <Badge variant="secondary" className="text-[10px]">edited</Badge>
               )}
               <span
@@ -253,12 +275,15 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
                   'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium',
                   validation.valid
                     ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-destructive/15 text-destructive'
+                    : 'bg-destructive/15 text-destructive dark:text-red-400'
                 )}
                 title={validation.message}
               >
                 {validation.valid ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
                 {validation.valid ? 'Valid' : 'Invalid'}
+              </span>
+              <span className="font-sans text-xs font-normal text-muted-foreground">
+                Editable — changes sync to the form
               </span>
             </span>
             <Button

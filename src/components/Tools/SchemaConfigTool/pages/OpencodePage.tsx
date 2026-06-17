@@ -19,15 +19,13 @@ import {
   DEFAULT_CUSTOM_KEY,
   DEFAULT_CUSTOM_NPM,
   AI_SDK_OPTIONS,
+  fieldInput,
 } from '../shared/constants';
 import {
   getAutoModelName as resolveAutoModelName,
   getModelLimit as resolveModelLimit,
 } from '../shared/opencode';
 import type { ProviderConfig } from '../shared/types';
-
-const fieldInput =
-  'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 font-mono text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 export default function OpencodePage() {
   const {
@@ -407,7 +405,7 @@ export default function OpencodePage() {
           {customProviders.map(([id, config]) => (
             <div key={id} className="overflow-hidden rounded-md border border-amber-500/60">
               <div className="flex items-center gap-2 bg-muted/60 px-4 py-3">
-                <Badge className="bg-amber-500 text-black hover:bg-amber-500">Custom</Badge>
+                <Badge className="bg-amber-500 text-black hover:bg-amber-500 dark:bg-amber-400 dark:text-black">Custom</Badge>
                 <div className="flex flex-1 flex-wrap gap-2">
                   <Input
                     className="min-w-[140px] flex-1 font-mono text-xs"
@@ -434,6 +432,7 @@ export default function OpencodePage() {
                   className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
                   onClick={() => removeCustomProvider(id)}
                   title="Remove custom provider"
+                  aria-label="Remove custom provider"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -507,7 +506,7 @@ export default function OpencodePage() {
                     allowCustom
                   />
                   {fetchStatus[id]?.error ? (
-                    <p className="m-0 text-xs text-destructive">Fetch failed: {fetchStatus[id]?.error}</p>
+                    <p className="m-0 text-xs text-destructive dark:text-red-400">Fetch failed: {fetchStatus[id]?.error}</p>
                   ) : (
                     <p className="m-0 text-xs text-muted-foreground">
                       {fetchedModels[id]?.length
@@ -584,10 +583,11 @@ export default function OpencodePage() {
 
       <div>
         <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Default Models</h3>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label>Default Model</Label>
+            <Label htmlFor="opencode-default-model">Default Model</Label>
             <input
+              id="opencode-default-model"
               className={fieldInput}
               list="available-models"
               value={defaultModel}
@@ -596,8 +596,9 @@ export default function OpencodePage() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Small Model</Label>
+            <Label htmlFor="opencode-small-model">Small Model</Label>
             <input
+              id="opencode-small-model"
               className={fieldInput}
               list="available-models"
               value={smallModel}

@@ -27,7 +27,7 @@ export function FieldTemplate(props: FieldTemplateProps) {
       )}
       {description && <div className="mb-1 text-xs text-muted-foreground">{description}</div>}
       {children}
-      {errors && <div className="mt-1 text-xs text-destructive">{errors}</div>}
+      {errors && <div className="mt-1 text-xs text-destructive dark:text-red-400">{errors}</div>}
       {help && <div className="mt-1 text-xs text-muted-foreground">{help}</div>}
     </div>
   );
@@ -126,6 +126,7 @@ export function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
               onClick={onMoveUpItem}
               disabled={disabled || readonly}
               title="Move up"
+              aria-label="Move item up"
             >
               <ArrowUp className="h-4 w-4" />
             </Button>
@@ -139,6 +140,7 @@ export function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
               onClick={onMoveDownItem}
               disabled={disabled || readonly}
               title="Move down"
+              aria-label="Move item down"
             >
               <ArrowDown className="h-4 w-4" />
             </Button>
@@ -152,6 +154,7 @@ export function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
               onClick={onRemoveItem}
               disabled={disabled || readonly}
               title="Remove"
+              aria-label="Remove item"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

@@ -2,6 +2,7 @@ import React from 'react';
 import type { WidgetProps } from '@rjsf/utils';
 import { Input } from '@site/src/components/ui/input';
 import { Label } from '@site/src/components/ui/label';
+import { Textarea } from '@site/src/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@site/src/components/ui/select';
 import { cn } from '@site/src/lib/utils';
 
@@ -40,14 +41,12 @@ export function TextareaWidget(props: WidgetProps) {
   const { id, value, required, disabled, readonly, onChange, onBlur, onFocus } = props;
   
   return (
-    <textarea
+    <Textarea
       id={id}
       value={value ?? ''}
       required={required}
       disabled={disabled || readonly}
-      className={cn(
-        "flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-      )}
+      className="text-xs"
       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value === '' ? undefined : e.target.value)}
       onBlur={onBlur && ((e: React.FocusEvent<HTMLTextAreaElement>) => onBlur(id, e.target.value))}
       onFocus={onFocus && ((e: React.FocusEvent<HTMLTextAreaElement>) => onFocus(id, e.target.value))}

@@ -1,5 +1,5 @@
-import React, { useMemo, useRef } from 'react';
-import { RefreshCw, Upload, X } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { RefreshCw, Upload, X, AlertCircle } from 'lucide-react';
 import { Button } from '@site/src/components/ui/button';
 import { Label } from '@site/src/components/ui/label';
 import {
@@ -40,6 +40,7 @@ export default function OmoPage() {
   } = useSchemaConfig();
 
   const opencodeImportRef = useRef<HTMLInputElement>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const omoProviders = useMemo(() => {
     const list: { id: string; label: string; models: string[] }[] = [];
@@ -123,8 +124,9 @@ export default function OmoPage() {
       try {
         const json = parseJsonc(ev.target?.result as string);
         hydrateOpencodeState(json, hydrateSetters);
+        setImportError(null);
       } catch {
-        alert('Invalid JSON/JSONC file.');
+        setImportError('Invalid JSON/JSONC file.');
       }
     };
     reader.readAsText(file);
@@ -140,8 +142,9 @@ export default function OmoPage() {
       setModelNameOverrides(saved.modelNameOverrides ?? {});
       if (saved.defaultModel) setDefaultModel(saved.defaultModel);
       if (saved.smallModel) setSmallModel(saved.smallModel);
+      setImportError(null);
     } else if (typeof window !== 'undefined') {
-      alert('No saved opencode config found in this browser.');
+      setImportError('No saved opencode config found in this browser.');
     }
   };
 
@@ -259,9 +262,9 @@ export default function OmoPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold">Provider source</span>
+      <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-4">
+        <div className="flex flex-col gap-0.5 border-b pb-2">
+          <h3 className="m-0 text-lg font-semibold">Provider source</h3>
           <span className="text-xs text-muted-foreground">
             {omoProviders.length
               ? `${omoProviders.length} provider(s) available — configured in the Opencode Config page.`
@@ -269,13 +272,13 @@ export default function OmoPage() {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => opencodeImportRef.current?.click()}>
+          <Button variant="outline" size="sm" onClick={() => { setImportError(null); opencodeImportRef.current?.click(); }}>
             <Upload className="mr-1.5 h-3.5 w-3.5" />
-            Import opencode.json
+            Import providers from opencode.json
           </Button>
           <Button variant="outline" size="sm" onClick={loadSavedOpencode}>
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-            Load saved
+            Load saved provider config
           </Button>
           <input
             ref={opencodeImportRef}
@@ -285,11 +288,17 @@ export default function OmoPage() {
             onChange={handleImportOpencodeFile}
           />
         </div>
+        {importError && (
+          <p className="m-0 flex items-center gap-1.5 text-xs text-destructive dark:text-red-400">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            {importError}
+          </p>
+        )}
       </div>
 
       <div>
         <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Agents</h3>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4">
           {AGENTS.map(agent =>
             renderOmoRow(
               agent,
@@ -306,7 +315,7 @@ export default function OmoPage() {
 
       <div>
         <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Categories</h3>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4">
           {CATEGORIES.map(category =>
             renderOmoRow(
               category,

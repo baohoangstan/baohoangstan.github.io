@@ -170,7 +170,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
 
   const resetAll = () => {
     if (typeof window !== 'undefined') {
-      const ok = window.confirm('Reset all configuration to defaults? This clears saved settings.');
+      const ok = window.confirm('Reset ALL tabs (Opencode, Oh My Opencode, Oh My Opencode Slim, Kilo, and General) to defaults? This clears every saved setting in this browser.');
       if (!ok) return;
       clearPersisted();
     }

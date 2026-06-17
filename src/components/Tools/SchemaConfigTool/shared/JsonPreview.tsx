@@ -38,7 +38,7 @@ export function JsonPreview({ value, onChange, error }: JsonPreviewProps) {
 
   return (
     <div
-      className="flex-1 overflow-auto"
+      className="flex-1 overflow-auto transition-shadow hover:ring-1 hover:ring-inset hover:ring-ring/40 focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring"
       style={{ background: theme.plain.backgroundColor, color: theme.plain.color }}
     >
       <Editor
@@ -48,6 +48,7 @@ export function JsonPreview({ value, onChange, error }: JsonPreviewProps) {
         padding={20}
         spellCheck={false}
         textareaClassName="focus:outline-none"
+        aria-label="Editable JSON preview — changes sync to the form"
         style={{
           fontFamily: editorFont,
           fontSize: 13,
@@ -57,7 +58,7 @@ export function JsonPreview({ value, onChange, error }: JsonPreviewProps) {
         }}
       />
       {error && (
-        <div className="sticky bottom-0 flex items-center gap-2 border-t border-destructive/40 bg-destructive/15 px-4 py-2 text-xs text-destructive backdrop-blur">
+        <div className="sticky bottom-0 flex items-center gap-2 border-t border-destructive/40 bg-destructive/15 px-4 py-2 text-xs text-destructive dark:text-red-400 backdrop-blur">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           <span>{error}</span>
         </div>

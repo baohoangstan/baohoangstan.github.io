@@ -8,11 +8,9 @@ import {
   OMOSLIM_VARIANTS,
   OMOSLIM_SKILLS,
   OMOSLIM_MCPS,
+  fieldInput,
 } from '../shared/constants';
 import type { OmoSlimAgentConfig } from '../shared/types';
-
-const fieldInput =
-  'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 font-mono text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 export default function OmoSlimPage() {
   const {
@@ -70,7 +68,7 @@ export default function OmoSlimPage() {
 
       <div>
         <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Agents</h3>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-4">
           {OMOSLIM_AGENTS.map(agent => {
             const cfg = omoslimAgents[agent] || {};
             return (
@@ -78,8 +76,9 @@ export default function OmoSlimPage() {
                 <Label className="capitalize">{agent}</Label>
 
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold text-muted-foreground">Model</span>
+                  <label htmlFor={`omoslim-${agent}-model`} className="text-xs font-semibold text-muted-foreground">Model</label>
                   <input
+                    id={`omoslim-${agent}-model`}
                     className={fieldInput}
                     list="omoslim-models"
                     value={cfg.model || ''}
@@ -89,8 +88,9 @@ export default function OmoSlimPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold text-muted-foreground">Variant</span>
+                  <label htmlFor={`omoslim-${agent}-variant`} className="text-xs font-semibold text-muted-foreground">Variant</label>
                   <input
+                    id={`omoslim-${agent}-variant`}
                     className={fieldInput}
                     list="omoslim-variants"
                     value={cfg.variant || ''}

@@ -2,14 +2,16 @@ import React, { useMemo } from 'react';
 import { Input } from '@site/src/components/ui/input';
 import { Label } from '@site/src/components/ui/label';
 import { MultiSelect } from '@site/src/components/ui/multi-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@site/src/components/ui/select';
 import { useSchemaConfig } from '../shared/context';
-import { KILO_PERMISSION_TOOLS } from '../shared/constants';
+import { KILO_PERMISSION_TOOLS, fieldInput } from '../shared/constants';
 import type { KiloConfig } from '../shared/types';
-
-const fieldInput =
-  'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 font-mono text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
-const fieldSelect =
-  'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 type Option = { value: string; label: string };
 
@@ -29,13 +31,18 @@ function SelectField({
   return (
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
-      <select className={fieldSelect} value={value} onChange={e => onChange(e.target.value)}>
-        {options.map(o => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-9 text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(o => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {hint && <p className="m-0 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -111,8 +118,9 @@ export default function KiloPage() {
         <h3 className="mb-4 border-b pb-2 text-lg font-semibold">General</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label>Default Model</Label>
+            <Label htmlFor="kilo-default-model">Default Model</Label>
             <input
+              id="kilo-default-model"
               className={fieldInput}
               list="kilo-models"
               value={kiloConfig.model}
@@ -121,8 +129,9 @@ export default function KiloPage() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Small Model</Label>
+            <Label htmlFor="kilo-small-model">Small Model</Label>
             <input
+              id="kilo-small-model"
               className={fieldInput}
               list="kilo-models"
               value={kiloConfig.small_model}

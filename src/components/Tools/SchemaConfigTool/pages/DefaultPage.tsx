@@ -3,6 +3,7 @@ import { Download, AlertCircle } from 'lucide-react';
 import { Button } from '@site/src/components/ui/button';
 import { Input } from '@site/src/components/ui/input';
 import { Label } from '@site/src/components/ui/label';
+import { Textarea } from '@site/src/components/ui/textarea';
 import { useSchemaConfig } from '../shared/context';
 import { parseJsonc } from '../shared/jsonc';
 import { isPlainObject } from '../shared/validators';
@@ -62,9 +63,10 @@ export default function DefaultPage() {
       <div>
         <h3 className="mb-4 border-b pb-2 text-lg font-semibold">Schema source</h3>
         <div className="flex flex-col gap-1.5">
-          <Label>Import schema from URL</Label>
+          <Label htmlFor="default-schema-url">Import schema from URL</Label>
           <div className="flex items-center gap-2">
             <Input
+              id="default-schema-url"
               className="flex-1 font-mono text-sm"
               placeholder="https://example.com/schema.json"
               value={defaultSchemaUrl}
@@ -82,7 +84,7 @@ export default function DefaultPage() {
             </Button>
           </div>
           {fetchError && (
-            <p className="m-0 flex items-center gap-1.5 text-xs text-destructive">
+            <p className="m-0 flex items-center gap-1.5 text-xs text-destructive dark:text-red-400">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
               Failed to load: {fetchError}
             </p>
@@ -93,16 +95,18 @@ export default function DefaultPage() {
         </div>
 
         <div className="mt-4 flex flex-col gap-1.5">
-          <Label>Or paste a JSON Schema</Label>
-          <textarea
-            className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          <Label htmlFor="default-schema-paste">Or paste a JSON Schema</Label>
+          <Textarea
+            id="default-schema-paste"
+            aria-label="Paste JSON Schema"
+            className="min-h-[120px] font-mono text-xs"
             placeholder='{ "type": "object", "properties": { "name": { "type": "string" } } }'
             value={defaultSchemaText}
             onChange={e => setDefaultSchemaText(e.target.value)}
             spellCheck={false}
           />
           {parseError && (
-            <p className="m-0 flex items-center gap-1.5 text-xs text-destructive">
+            <p className="m-0 flex items-center gap-1.5 text-xs text-destructive dark:text-red-400">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
               {parseError}
             </p>

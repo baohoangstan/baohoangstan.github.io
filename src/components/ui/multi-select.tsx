@@ -33,10 +33,13 @@ export function MultiSelect({
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [mounted, setMounted] = React.useState(false)
+  const [activeIndex, setActiveIndex] = React.useState(-1)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const triggerRef = React.useRef<HTMLButtonElement>(null)
   const dropdownRef = React.useRef<HTMLDivElement>(null)
+  const listboxRef = React.useRef<HTMLDivElement>(null)
   const [menuRect, setMenuRect] = React.useState<{ top: number; left: number; width: number } | null>(null)
+  const listboxId = React.useId()
 
   React.useEffect(() => {
     setMounted(true)
@@ -50,7 +53,10 @@ export function MultiSelect({
   }, [])
 
   React.useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setActiveIndex(-1)
+      return
+    }
     updatePosition()
     const onPointerDown = (e: MouseEvent) => {
       const target = e.target as Node
@@ -110,38 +116,88 @@ export function MultiSelect({
     setQuery("")
   }
 
+  // Roving focus: all interactive items in the listbox
+  const itemCount = filtered.length + (canAddCustom ? 1 : 0)
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      if (activeIndex >= 0 && activeIndex < filtered.length) {
+        e.preventDefault()
+        toggle(filtered[activeIndex].value)
+        return
+      }
+      if (activeIndex === filtered.length && canAddCustom) {
+        e.preventDefault()
+        addCustom()
+        return
+      }
+      if (canAddCustom) {
+        e.preventDefault()
+        addCustom()
+        return
+      }
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setActiveIndex(i => Math.min(i + 1, itemCount - 1))
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setActiveIndex(i => Math.max(i - 1, -1))
+    }
+  }
+
+  // Scroll active item into view
+  React.useEffect(() => {
+    if (!listboxRef.current || activeIndex < 0) return
+    const items = listboxRef.current.querySelectorAll<HTMLElement>("[role='option']")
+    items[activeIndex]?.scrollIntoView({ block: "nearest" })
+  }, [activeIndex])
+
   return (
     <div ref={containerRef} className={cn("relative", className)}>
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-controls={open ? listboxId : undefined}
         className="flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-left text-sm shadow-sm ring-offset-background transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       >
         <span className="flex flex-1 flex-wrap gap-1">
           {selected.length === 0 ? (
             <span className="text-muted-foreground">{placeholder}</span>
           ) : (
-            selected.map((value) => (
-              <span
-                key={value}
-                className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground"
-              >
-                {options.find((o) => o.value === value)?.label ?? value}
+            selected.map((value) => {
+              const chipLabel = options.find((o) => o.value === value)?.label ?? value
+              return (
                 <span
-                  role="button"
-                  tabIndex={-1}
-                  aria-label={`Remove ${value}`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    remove(value)
-                  }}
-                  className="rounded-sm hover:text-destructive"
+                  key={value}
+                  className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-secondary-foreground"
                 >
-                  <X className="h-3 w-3" />
+                  {chipLabel}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${chipLabel}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      remove(value)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        remove(value)
+                      }
+                    }}
+                    className="rounded-sm hover:text-destructive focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </span>
-              </span>
-            ))
+              )
+            })
           )}
         </span>
         <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
@@ -157,32 +213,45 @@ export function MultiSelect({
             <Search className="h-3.5 w-3.5 shrink-0 opacity-50" />
             <input
               autoFocus
+              role="combobox"
+              aria-expanded={open}
+              aria-autocomplete="list"
+              aria-controls={listboxId}
+              aria-activedescendant={activeIndex >= 0 ? `${listboxId}-opt-${activeIndex}` : undefined}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && canAddCustom) {
-                  e.preventDefault()
-                  addCustom()
-                }
-              }}
+              onChange={(e) => { setQuery(e.target.value); setActiveIndex(-1) }}
+              onKeyDown={handleInputKeyDown}
               placeholder={searchPlaceholder}
               className="h-9 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
-          <div className="max-h-60 overflow-auto p-1">
+          <div
+            id={listboxId}
+            ref={listboxRef}
+            role="listbox"
+            aria-multiselectable="true"
+            className="max-h-60 overflow-auto p-1"
+          >
             {filtered.length === 0 && !canAddCustom && (
               <p className="px-2 py-3 text-center text-sm text-muted-foreground">
                 {emptyText}
               </p>
             )}
-            {filtered.map((option) => {
+            {filtered.map((option, idx) => {
               const isSelected = selected.includes(option.value)
+              const isActive = idx === activeIndex
               return (
                 <button
                   key={option.value}
+                  id={`${listboxId}-opt-${idx}`}
                   type="button"
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={() => toggle(option.value)}
-                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                    isActive && "bg-accent text-accent-foreground"
+                  )}
                 >
                   <span
                     className={cn(
@@ -203,14 +272,20 @@ export function MultiSelect({
             {canAddCustom && (
               <button
                 type="button"
+                id={`${listboxId}-opt-${filtered.length}`}
+                role="option"
+                aria-selected={false}
                 onClick={addCustom}
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                  activeIndex === filtered.length && "bg-accent text-accent-foreground"
+                )}
               >
                 <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-dashed border-input">
                   +
                 </span>
                 <span className="truncate text-xs">
-                  Add “<span className="font-mono">{query.trim()}</span>”
+                  Add "<span className="font-mono">{query.trim()}</span>"
                 </span>
               </button>
             )}

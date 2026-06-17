@@ -2,6 +2,9 @@ import type { KiloConfig, Provider, ProviderConfig } from './types';
 
 export const STORAGE_KEY = 'schemaConfigTool:v1';
 
+export const fieldInput =
+  'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 font-mono text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+
 export const DEFAULT_CUSTOM_API = 'https://your-provider-url.com/v1';
 export const DEFAULT_CUSTOM_KEY = 'your-key';
 export const DEFAULT_CUSTOM_NPM = '@ai-sdk/openai-compatible';
