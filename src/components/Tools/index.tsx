@@ -37,7 +37,7 @@ const toolRegistry: ToolDefinition[] = [
   },
   {
     id: 'json',
-    title: 'JSON Formatter / Validator',
+    title: 'JSON Formatter',
     description: 'Pretty-print, minify, or validate JSON. Shows parse errors inline.',
     Component: JsonTool,
   },

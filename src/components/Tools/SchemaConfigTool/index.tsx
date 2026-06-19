@@ -20,7 +20,7 @@ import KiloPage from './pages/KiloPage';
 
 const TAB_META: Record<SchemaTab, { label: string; fileName: string }> = {
   default: { label: 'General', fileName: 'schema.json' },
-  opencode: { label: 'Opencode Config', fileName: 'opencode.json' },
+  opencode: { label: 'Opencode', fileName: 'opencode.json' },
   omo: { label: 'Oh My Opencode', fileName: 'oh-my-opencode.json' },
   omoslim: { label: 'Oh My Opencode Slim', fileName: 'oh-my-opencode-slim.json' },
   kilo: { label: 'Kilo Config', fileName: 'kilo.jsonc' },
