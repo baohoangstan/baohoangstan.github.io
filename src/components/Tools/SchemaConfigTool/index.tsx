@@ -17,6 +17,7 @@ import OpencodePage from './pages/OpencodePage';
 import OmoPage from './pages/OmoPage';
 import OmoSlimPage from './pages/OmoSlimPage';
 import KiloPage from './pages/KiloPage';
+import { SectionNav } from './shared/SectionNav';
 
 const TAB_META: Record<SchemaTab, { label: string; fileName: string }> = {
   default: { label: 'General', fileName: 'schema.json' },
@@ -67,6 +68,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
   } = ctx;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formScrollContainerRef = useRef<HTMLDivElement>(null);
 
   const opencodeHydrateSetters = {
     providersData,
@@ -255,13 +257,17 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
       </div>
 
       <div className="flex min-h-[500px] flex-col xl:h-[min(80vh,720px)] xl:flex-row">
-        <div className="min-w-0 flex-1 overflow-y-auto border-b p-6 xl:border-b-0 xl:border-r">
+        <div
+          ref={formScrollContainerRef}
+          className="min-w-0 flex-1 overflow-y-auto border-b p-6 xl:border-b-0 xl:border-r"
+        >
           {tab === 'default' && <DefaultPage />}
           {tab === 'opencode' && <OpencodePage />}
           {tab === 'omo' && <OmoPage />}
           {tab === 'omoslim' && <OmoSlimPage />}
           {tab === 'kilo' && <KiloPage />}
         </div>
+        <SectionNav containerRef={formScrollContainerRef} tab={tab} />
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden border-t xl:border-l xl:border-t-0">
           <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-6 py-3">
