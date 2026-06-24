@@ -88,6 +88,7 @@ export type PersistedState = {
   // Default (any-schema) tab
   defaultSchemaUrl?: string;
   defaultSchemaText?: string;
+  defaultSchemaDate?: string;
   defaultFormData?: unknown;
 };
 

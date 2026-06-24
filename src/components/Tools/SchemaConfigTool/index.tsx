@@ -18,6 +18,7 @@ import OmoPage from './pages/OmoPage';
 import OmoSlimPage from './pages/OmoSlimPage';
 import KiloPage from './pages/KiloPage';
 import { SectionNav } from './shared/SectionNav';
+import { SchemaMetaBadge } from './shared/SchemaMetaBadge';
 
 const TAB_META: Record<SchemaTab, { label: string; fileName: string }> = {
   default: { label: 'General', fileName: 'schema.json' },
@@ -62,6 +63,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
     kiloConfig,
     setKiloConfig,
     setDefaultSchemaText,
+    setDefaultSchemaDate,
     defaultFormData,
     setDefaultFormData,
     resetAll,
@@ -179,6 +181,7 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
           // Importing a schema file for the generic form.
           parseJsonc(raw);
           setDefaultSchemaText(raw);
+          setDefaultSchemaDate('');
           setDefaultFormData({});
         } else {
           const json = parseJsonc(raw);
@@ -224,7 +227,10 @@ function SchemaConfigInner({ tab }: SchemaConfigToolProps) {
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm">
       <div className="flex flex-col gap-3 border-b bg-muted/40 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="m-0 text-xl font-semibold">{TAB_META[tab].label}</h2>
+        <div className="flex flex-col gap-1">
+          <h2 className="m-0 text-xl font-semibold">{TAB_META[tab].label}</h2>
+          <SchemaMetaBadge tab={tab} />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {importError && (
             <p className="m-0 flex items-center gap-1.5 text-xs text-destructive dark:text-red-400">

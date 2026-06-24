@@ -63,6 +63,8 @@ export type SchemaConfigContextValue = {
   setDefaultSchemaUrl: Setter<string>;
   defaultSchemaText: string;
   setDefaultSchemaText: Setter<string>;
+  defaultSchemaDate: string;
+  setDefaultSchemaDate: Setter<string>;
   defaultFormData: unknown;
   setDefaultFormData: Setter<unknown>;
   // persisted snapshot at mount (for "load saved")
@@ -126,6 +128,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
   // Default (any-schema) tab state
   const [defaultSchemaUrl, setDefaultSchemaUrl] = useState<string>(persisted.defaultSchemaUrl ?? '');
   const [defaultSchemaText, setDefaultSchemaText] = useState<string>(persisted.defaultSchemaText ?? '');
+  const [defaultSchemaDate, setDefaultSchemaDate] = useState<string>(persisted.defaultSchemaDate ?? '');
   const [defaultFormData, setDefaultFormData] = useState<unknown>(persisted.defaultFormData ?? {});
 
   useEffect(() => {
@@ -148,6 +151,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       kiloConfig,
       defaultSchemaUrl,
       defaultSchemaText,
+      defaultSchemaDate,
       defaultFormData,
     };
     savePersisted(data);
@@ -170,6 +174,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
     kiloConfig,
     defaultSchemaUrl,
     defaultSchemaText,
+    defaultSchemaDate,
     defaultFormData,
   ]);
 
@@ -196,6 +201,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
     setKiloConfig(DEFAULT_KILO_CONFIG);
     setDefaultSchemaUrl('');
     setDefaultSchemaText('');
+    setDefaultSchemaDate('');
     setDefaultFormData({});
   };
 
@@ -239,6 +245,8 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       setDefaultSchemaUrl,
       defaultSchemaText,
       setDefaultSchemaText,
+      defaultSchemaDate,
+      setDefaultSchemaDate,
       defaultFormData,
       setDefaultFormData,
       initialPersisted: persisted,
@@ -265,6 +273,7 @@ export function SchemaConfigProvider({ children }: { children: React.ReactNode }
       kiloConfig,
       defaultSchemaUrl,
       defaultSchemaText,
+      defaultSchemaDate,
       defaultFormData,
     ]
   );

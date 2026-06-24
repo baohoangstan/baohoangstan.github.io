@@ -16,6 +16,7 @@ export default function DefaultPage() {
     setDefaultSchemaUrl,
     defaultSchemaText,
     setDefaultSchemaText,
+    setDefaultSchemaDate,
     defaultFormData,
     setDefaultFormData,
   } = useSchemaConfig();
@@ -46,10 +47,12 @@ export default function DefaultPage() {
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const lastModified = res.headers.get('last-modified') ?? '';
       const text = await res.text();
       // Validate it parses before storing.
       parseJsonc(text);
       setDefaultSchemaText(text);
+      setDefaultSchemaDate(lastModified);
       setDefaultFormData({});
     } catch (e) {
       setFetchError((e as Error).message);
@@ -102,7 +105,7 @@ export default function DefaultPage() {
             className="min-h-[120px] font-mono text-xs"
             placeholder='{ "type": "object", "properties": { "name": { "type": "string" } } }'
             value={defaultSchemaText}
-            onChange={e => setDefaultSchemaText(e.target.value)}
+            onChange={e => { setDefaultSchemaText(e.target.value); setDefaultSchemaDate(''); }}
             spellCheck={false}
           />
           {parseError && (

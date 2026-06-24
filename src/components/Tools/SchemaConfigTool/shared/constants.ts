@@ -71,6 +71,8 @@ export const CATEGORIES = ['visual-engineering', 'ultrabrain', 'deep', 'artistry
 
 // --- Oh My Opencode Slim (alvinunreal/oh-my-opencode-slim) ---
 export const OMOSLIM_SCHEMA_URL = 'https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json';
+// npm package behind the `@latest` schema URL; resolves to a concrete version + date.
+export const OMOSLIM_NPM_PACKAGE = 'oh-my-opencode-slim';
 export const OMOSLIM_AGENTS = ['orchestrator', 'oracle', 'librarian', 'explorer', 'designer', 'fixer'];
 export const OMOSLIM_VARIANTS = ['low', 'medium', 'high'];
 export const OMOSLIM_SKILLS = ['simplify', 'agent-browser', 'codemap', 'cartography'];
