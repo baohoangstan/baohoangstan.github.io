@@ -156,13 +156,13 @@ function AvatarGenerator(): JSX.Element {
   return (
     <Card className="mx-auto w-full max-w-lg shadow-md">
       <CardHeader>
-        <CardTitle>Tạo ảnh đẹp đi bạn ơi</CardTitle>
+        <CardTitle>1 Chiếc Avatar</CardTitle>
       </CardHeader>
 
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="avatar-image">Ảnh Đại Diện</Label>
+            <Label htmlFor="avatar-image">Ảnh Gốc</Label>
             <Input
               id="avatar-image"
               type="file"
@@ -182,7 +182,7 @@ function AvatarGenerator(): JSX.Element {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="frame-text">Chữ Trên Khung</Label>
+            <Label htmlFor="frame-text">Tiêu Đề</Label>
             <Input
               id="frame-text"
               type="text"
@@ -195,7 +195,7 @@ function AvatarGenerator(): JSX.Element {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="main-color">Màu Chính</Label>
+              <Label htmlFor="main-color">Tông Màu</Label>
               <Select value={color} onValueChange={setColor}>
                 <SelectTrigger id="main-color">
                   <SelectValue>
@@ -230,7 +230,7 @@ function AvatarGenerator(): JSX.Element {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="background">Nền</Label>
+              <Label htmlFor="background">Phông Nền</Label>
               <Select value={background} onValueChange={setBackground}>
                 <SelectTrigger id="background">
                   <SelectValue />
@@ -257,7 +257,7 @@ function AvatarGenerator(): JSX.Element {
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? 'Đang tạo…' : 'Tạo Ảnh Đại Diện'}
+            {loading ? 'Đang tạo…' : 'Bắt đầu tạo'}
           </Button>
 
           {status && (

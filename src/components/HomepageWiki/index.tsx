@@ -177,8 +177,7 @@ function IdentityBand() {
           {siteConfig.title}
         </Heading>
         <p className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both delay-200 duration-700 max-w-2xl text-lg md:text-xl leading-relaxed text-muted-foreground mb-8">
-          {siteConfig.tagline} — a place where I keep notes, guides, dev tools,
-          and writing, all in one spot.
+          {siteConfig.tagline}
         </p>
         <div className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both delay-300 duration-700 flex items-center gap-3">
           {SOCIALS.map(({ label, href, Icon }) => (

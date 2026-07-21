@@ -14,7 +14,7 @@ function tailwindPlugin(): Plugin<void> {
 
 const config: Config = {
   title: "Bao Hoang's Blog",
-  tagline: "Love, Death & Chill Dev",
+  tagline: "Love, Death & Robots",
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
