@@ -152,6 +152,7 @@ const config: Config = {
           label: "About",
           docsPluginId: "about",
         },
+        { to: "/tk19", label: "TK19", position: "left" },
         {
           type: "localeDropdown",
           position: "right",
