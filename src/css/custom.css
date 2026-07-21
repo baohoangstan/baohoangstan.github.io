@@ -146,6 +146,15 @@
     0 8px 30px -12px hsl(0 0% 0% / 0.5);
 }
 
+/* The navbar's backdrop-filter makes it the containing block for its
+   position:fixed children — which include the mobile drawer and its
+   backdrop. That traps the drawer inside the navbar box. Disable the
+   filter while the mobile sidebar is open so the drawer fills the viewport. */
+.navbar.navbar-sidebar--show {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* Soft sidebar separation instead of a hard line */
 .theme-doc-sidebar-container {
   border-right: none !important;
