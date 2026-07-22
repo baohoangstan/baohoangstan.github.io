@@ -66,6 +66,44 @@ const fileToDataUrl = (file: File): Promise<string> =>
     r.readAsDataURL(file);
   });
 
+// Saving a `data:` URL via `<a download>` is broken on mobile: iOS Safari
+// ignores the download attribute (it just navigates to the URL) and Android
+// Chrome flakes on large data URIs — so the CTA appeared to do nothing.
+// Prefer the native share sheet (lets users save to Photos), and fall back to
+// an object-URL download on desktop / Android.
+const saveImage = async (src: string, filename: string): Promise<void> => {
+  let blob: Blob;
+  try {
+    blob = await (await fetch(src)).blob();
+  } catch {
+    window.open(src, '_blank');
+    return;
+  }
+
+  const file = new File([blob], filename, { type: 'image/png' });
+  if (
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [file] })
+  ) {
+    try {
+      await navigator.share({ files: [file] });
+      return;
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return; // user dismissed
+      // otherwise fall through to the download path
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
 function AvatarGenerator(): JSX.Element {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string>('');
@@ -281,10 +319,16 @@ function AvatarGenerator(): JSX.Element {
                   alt={`avatar ${i + 1}`}
                   className="max-w-full rounded-lg border border-border shadow-md"
                 />
-                <Button asChild variant="secondary" size="sm">
-                  <a download={`avatar-${i + 1}.png`} href={src}>
-                    Tải Ảnh PNG
-                  </a>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    saveImage(
+                      src,
+                      `avatar-${i + 1}-${Math.floor(Date.now() / 1000)}.png`,
+                    )
+                  }>
+                  Lưu Ảnh
                 </Button>
               </div>
             ))}
