@@ -4,6 +4,7 @@ import UrlTool from './UrlTool';
 import UuidTool from './UuidTool';
 import JsonTool from './JsonTool';
 import UlidTool from './UlidTool';
+import BackgroundRemovalTool from './BackgroundRemovalTool';
 
 export type ToolDefinition = {
   id: string;
@@ -46,6 +47,13 @@ const toolRegistry: ToolDefinition[] = [
     title: 'ULID Generator',
     description: 'Generate one or more ULIDs — lexicographically sortable, timestamp-based unique identifiers.',
     Component: UlidTool,
+  },
+  {
+    id: 'background-removal',
+    title: 'Background Removal',
+    description:
+      'Remove the background from up to 5 PNG images. Returns transparent PNGs.',
+    Component: BackgroundRemovalTool,
   },
 ];
 
