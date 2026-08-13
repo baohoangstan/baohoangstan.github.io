@@ -156,6 +156,30 @@
    Image tools — file picking, previews, transparent-image results.
    ========================================================================= */
 
+/* Matches .input, minus the fixed width and monospace digits. */
+.select {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 2px var(--ifm-color-primary-lightest);
+}
+
+.select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .fileInput {
   font-size: 0.85rem;
   color: var(--ifm-color-emphasis-700);

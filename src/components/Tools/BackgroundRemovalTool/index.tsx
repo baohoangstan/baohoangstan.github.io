@@ -4,6 +4,17 @@ import styles from '../styles.module.css';
 const ENDPOINT = 'https://n8n.wtboss.com/webhook/remove-png-background';
 const MAX_FILES = 5;
 
+/** Output only — inputs are always PNG. */
+type OutputFormat = 'png' | 'webp';
+
+const FORMATS: Record<OutputFormat, {label: string; mime: string; ext: string}> =
+  {
+    png: {label: 'PNG', mime: 'image/png', ext: 'png'},
+    webp: {label: 'WebP', mime: 'image/webp', ext: 'webp'},
+  };
+
+const FORMAT_ORDER: OutputFormat[] = ['png', 'webp'];
+
 type SelectedImage = {
   key: string;
   /** Sent to the API so results can be matched back to the input file. */
@@ -15,11 +26,14 @@ type SelectedImage = {
 type ResultImage = {
   id: string;
   src: string;
+  /** Pinned per result, so changing the select later can't mislabel a download. */
+  format: OutputFormat;
 };
 
 type ApiImage = {
   id?: string;
   imageB64?: string;
+  output?: string;
 };
 
 type ApiError = {
@@ -32,6 +46,7 @@ type ApiResponse = {
   jobId?: string;
   status?: 'done' | 'partial_error' | 'error' | string;
   count?: number;
+  output?: string;
   images?: ApiImage[];
   errors?: ApiError[];
 };
@@ -44,11 +59,23 @@ const fileToDataUrl = (file: File): Promise<string> =>
     r.readAsDataURL(file);
   });
 
+// iPadOS Safari reports itself as "Macintosh", but unlike a real Mac it has
+// multiple touch points — that's the only reliable way to tell them apart.
+const isMobileDevice = (): boolean =>
+  /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
+  (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
 // Saving a `data:` URL via `<a download>` is broken on mobile: iOS Safari
 // ignores the download attribute (it just navigates to the URL) and Android
-// Chrome flakes on large data URIs. Prefer the native share sheet (lets users
-// save to Photos), and fall back to an object-URL download on desktop.
-const saveImage = async (src: string, filename: string): Promise<void> => {
+// Chrome flakes on large data URIs. Prefer the native share sheet there (lets
+// users save to Photos). On desktop — including macOS, where Safari would
+// otherwise pop the share sheet too — go straight to a normal browser
+// download via an object URL.
+const saveImage = async (
+  src: string,
+  filename: string,
+  mime: string,
+): Promise<void> => {
   let blob: Blob;
   try {
     blob = await (await fetch(src)).blob();
@@ -57,8 +84,9 @@ const saveImage = async (src: string, filename: string): Promise<void> => {
     return;
   }
 
-  const file = new File([blob], filename, {type: 'image/png'});
+  const file = new File([blob], filename, {type: mime});
   if (
+    isMobileDevice() &&
     typeof navigator.canShare === 'function' &&
     navigator.canShare({files: [file]})
   ) {
@@ -99,9 +127,20 @@ function isPng(file: File): boolean {
   return file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
 }
 
-function toSrc(value: string): string {
+function toSrc(value: string, format: OutputFormat): string {
   // The API returns data URLs, but tolerate a raw base64 payload.
-  return value.startsWith('data:') ? value : `data:image/png;base64,${value}`;
+  return value.startsWith('data:')
+    ? value
+    : `data:${FORMATS[format].mime};base64,${value}`;
+}
+
+/** Only trust the format the service reports if we know how to handle it. */
+function asFormat(
+  value: string | undefined,
+  fallback: OutputFormat,
+): OutputFormat {
+  const normalized = value?.toLowerCase();
+  return normalized === 'png' || normalized === 'webp' ? normalized : fallback;
 }
 
 export default function BackgroundRemovalTool(): JSX.Element {
@@ -109,6 +148,7 @@ export default function BackgroundRemovalTool(): JSX.Element {
   const [files, setFiles] = useState<SelectedImage[]>([]);
   const [results, setResults] = useState<ResultImage[]>([]);
   const [itemErrors, setItemErrors] = useState<ApiError[]>([]);
+  const [format, setFormat] = useState<OutputFormat>('png');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -192,6 +232,7 @@ export default function BackgroundRemovalTool(): JSX.Element {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
+          output: format,
           images: files.map((f) => ({id: f.id, imageB64: f.dataUrl})),
         }),
       });
@@ -207,13 +248,21 @@ export default function BackgroundRemovalTool(): JSX.Element {
       const images = Array.isArray(data.images) ? data.images : [];
       const errors = Array.isArray(data.errors) ? data.errors : [];
 
+      // Prefer what the service says it produced: per-image first, then the
+      // top-level field, then the format we asked for.
+      const batchFormat = asFormat(data.output, format);
+
       // Map before filtering so the positional fallback still lines up with
       // the input list when the service omits an id.
       const done: ResultImage[] = images
-        .map((img, i) => ({
-          id: img?.id || files[i]?.id || `image-${i + 1}`,
-          src: img?.imageB64 ? toSrc(img.imageB64) : '',
-        }))
+        .map((img, i) => {
+          const imgFormat = asFormat(img?.output, batchFormat);
+          return {
+            id: img?.id || files[i]?.id || `image-${i + 1}`,
+            src: img?.imageB64 ? toSrc(img.imageB64, imgFormat) : '',
+            format: imgFormat,
+          };
+        })
         .filter((img) => img.src !== '');
 
       setResults(done);
@@ -286,6 +335,22 @@ export default function BackgroundRemovalTool(): JSX.Element {
       )}
 
       <div className={styles.buttonRow}>
+        <label className={styles.fieldLabel} htmlFor="bg-removal-format">
+          Output format
+        </label>
+        <select
+          id="bg-removal-format"
+          className={styles.select}
+          value={format}
+          onChange={(e) => setFormat(e.target.value as OutputFormat)}
+          disabled={loading}
+        >
+          {FORMAT_ORDER.map((key) => (
+            <option key={key} value={key}>
+              {FORMATS[key].label}
+            </option>
+          ))}
+        </select>
         <button
           type="button"
           className="button button--primary button--sm"
@@ -341,7 +406,8 @@ export default function BackgroundRemovalTool(): JSX.Element {
       {results.length > 0 && (
         <div className={styles.fieldGroup}>
           <label className={styles.fieldLabel}>
-            Result{results.length > 1 ? 's' : ''} — transparent PNG
+            Result{results.length > 1 ? 's' : ''} — transparent{' '}
+            {FORMATS[asFormat(results[0]?.format, format)].label}
             {results.length > 1 ? 's' : ''}
           </label>
           <div className={styles.imageGrid}>
@@ -361,9 +427,15 @@ export default function BackgroundRemovalTool(): JSX.Element {
                   <button
                     type="button"
                     className="button button--outline button--primary button--sm"
-                    onClick={() => saveImage(r.src, `${r.id}-no-bg.png`)}
+                    onClick={() =>
+                      saveImage(
+                        r.src,
+                        `${r.id}-no-bg.${FORMATS[r.format].ext}`,
+                        FORMATS[r.format].mime,
+                      )
+                    }
                   >
-                    Save PNG
+                    Download
                   </button>
                 </div>
               </div>

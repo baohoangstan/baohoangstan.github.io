@@ -52,7 +52,7 @@ const toolRegistry: ToolDefinition[] = [
     id: 'background-removal',
     title: 'Background Removal',
     description:
-      'Remove the background from up to 5 PNG images. Returns transparent PNGs.',
+      'Remove the background from up to 5 PNG images. Returns transparent PNG or WebP.',
     Component: BackgroundRemovalTool,
   },
 ];
