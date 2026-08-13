@@ -156,6 +156,15 @@
    Image tools — file picking, previews, transparent-image results.
    ========================================================================= */
 
+/* Like .fieldGroup (label stacked over control, same 0.25rem gap), but the
+   control keeps its natural width instead of stretching to fill the row. */
+.fieldGroupCompact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
 /* Matches .input, minus the fixed width and monospace digits. */
 .select {
   padding: 0.4rem 0.75rem;
@@ -263,6 +272,206 @@
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+
+/* A frame that opens the preview dialog. Button reset, then inherit the
+   checkerboard frame layout so it looks identical to the static version. */
+.imageFrameButton {
+  /* iOS Safari gives buttons its own chrome — strip it so the frame keeps
+     the exact look of the non-interactive version. */
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  cursor: zoom-in;
+  position: relative;
+  overflow: hidden;
+}
+
+.imageFrameButton:hover .imageThumb,
+.imageFrameButton:focus-visible .imageThumb {
+  transform: scale(1.03);
+}
+
+.imageFrameButton .imageThumb {
+  transition: transform 0.15s ease;
+}
+
+.imageFrameButton:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: -2px;
+}
+
+/* Small "expand" hint that fades in on hover / keyboard focus. */
+.zoomHint {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: var(--ifm-global-radius);
+  background: rgba(15, 23, 42, 0.65);
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.imageFrameButton:hover .zoomHint,
+.imageFrameButton:focus-visible .zoomHint {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  /* No hover on touch — keep the affordance permanently visible. */
+  .zoomHint {
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imageFrameButton .imageThumb {
+    transition: none;
+  }
+
+  .imageFrameButton:hover .imageThumb,
+  .imageFrameButton:focus-visible .imageThumb {
+    transform: none;
+  }
+}
+
+/* =========================================================================
+   Preview dialog — native <dialog>, so focus trapping and Escape come free.
+   ========================================================================= */
+
+.previewDialog {
+  width: min(92vw, 1100px);
+  max-width: min(92vw, 1100px);
+  /* Leave room for the page's own chrome on short viewports. */
+  max-height: 92vh;
+  padding: 0;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.previewDialog::backdrop {
+  background: rgba(10, 15, 22, 0.72);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.previewInner {
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  flex: none;
+}
+
+.previewTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.previewName {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewMeta {
+  font-size: 0.75rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.previewClose {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  line-height: 1;
+  padding: 0;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-emphasis-700);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.previewClose:hover {
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-900);
+}
+
+.previewClose:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+}
+
+.previewBody {
+  composes: checker;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  overflow: auto;
+}
+
+.previewImage {
+  display: block;
+  max-width: 100%;
+  /* Cap by height too so tall images stay fully visible without scrolling. */
+  max-height: calc(92vh - 8.5rem);
+  object-fit: contain;
+}
+
+.previewFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  flex: none;
+}
+
+@media (max-width: 576px) {
+  .previewDialog {
+    width: 96vw;
+    max-width: 96vw;
+  }
+
+  .previewImage {
+    max-height: calc(92vh - 9.5rem);
+  }
 }
 
 .imageMeta {

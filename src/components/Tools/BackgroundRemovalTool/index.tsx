@@ -1,4 +1,4 @@
-import {useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import styles from '../styles.module.css';
 
 const ENDPOINT = 'https://n8n.wtboss.com/webhook/remove-png-background';
@@ -143,6 +143,140 @@ function asFormat(
   return normalized === 'png' || normalized === 'webp' ? normalized : fallback;
 }
 
+type Preview = {
+  /** Shown in the header and used for the download filename. */
+  name: string;
+  src: string;
+  /** Results are downloadable; inputs are view-only. */
+  download?: {filename: string; mime: string};
+  /** e.g. "Transparent WebP" or "Input PNG". */
+  meta: string;
+};
+
+type PreviewDialogProps = {
+  preview: Preview | null;
+  onClose: () => void;
+};
+
+function PreviewDialog({preview, onClose}: PreviewDialogProps): JSX.Element {
+  const ref = useRef<HTMLDialogElement>(null);
+  const open = preview !== null;
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+
+    if (open && !dialog.open) {
+      // showModal() gives us the top layer, a real ::backdrop, focus
+      // trapping, and Escape handling without any extra code.
+      dialog.showModal();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
+
+  // Escape fires `cancel`/`close` natively — mirror that back into state so
+  // React doesn't think the dialog is still open.
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return undefined;
+
+    const handleClose = (): void => onClose();
+    dialog.addEventListener('close', handleClose);
+    return () => dialog.removeEventListener('close', handleClose);
+  }, [onClose]);
+
+  // A modal <dialog> stops the page behind it from scrolling in most
+  // browsers, but Safari still scrolls the body — pin it while open.
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const {body} = document;
+    const previous = body.style.overflow;
+    body.style.overflow = 'hidden';
+    return () => {
+      body.style.overflow = previous;
+    };
+  }, [open]);
+
+  // Clicks inside the content bubble up from a child, so a click whose target
+  // is the dialog itself can only have landed on the backdrop. Requiring the
+  // press to have *started* there too means dragging off the image and
+  // releasing outside won't close the dialog by accident.
+  const pressedBackdrop = useRef(false);
+
+  function handleMouseDown(e: React.MouseEvent<HTMLDialogElement>): void {
+    pressedBackdrop.current = e.target === ref.current;
+  }
+
+  function handleBackdropClick(e: React.MouseEvent<HTMLDialogElement>): void {
+    if (pressedBackdrop.current && e.target === ref.current) onClose();
+    pressedBackdrop.current = false;
+  }
+
+  return (
+    <dialog
+      ref={ref}
+      className={styles.previewDialog}
+      onMouseDown={handleMouseDown}
+      onClick={handleBackdropClick}
+      aria-label={preview ? `Preview of ${preview.name}` : 'Image preview'}
+    >
+      {preview && (
+        <div className={styles.previewInner}>
+          <div className={styles.previewHeader}>
+            <div className={styles.previewTitle}>
+              <span className={styles.previewName} title={preview.name}>
+                {preview.name}
+              </span>
+              <span className={styles.previewMeta}>{preview.meta}</span>
+            </div>
+            <button
+              type="button"
+              className={styles.previewClose}
+              onClick={onClose}
+              aria-label="Close preview"
+              title="Close preview"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className={styles.previewBody}>
+            <img
+              className={styles.previewImage}
+              src={preview.src}
+              alt={preview.name}
+            />
+          </div>
+
+          <div className={styles.previewFooter}>
+            {preview.download && (
+              <button
+                type="button"
+                className="button button--primary button--sm"
+                onClick={() => {
+                  const {filename, mime} = preview.download!;
+                  saveImage(preview.src, filename, mime);
+                }}
+              >
+                Download
+              </button>
+            )}
+            <button
+              type="button"
+              className="button button--outline button--primary button--sm"
+              onClick={onClose}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </dialog>
+  );
+}
+
 export default function BackgroundRemovalTool(): JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<SelectedImage[]>([]);
@@ -152,6 +286,10 @@ export default function BackgroundRemovalTool(): JSX.Element {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<Preview | null>(null);
+
+  // Stable identity — PreviewDialog uses it in an effect dependency list.
+  const closePreview = useCallback((): void => setPreview(null), []);
 
   async function handleSelect(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -203,6 +341,9 @@ export default function BackgroundRemovalTool(): JSX.Element {
   }
 
   function handleRemove(key: string): void {
+    const gone = files.find((f) => f.key === key);
+    // Don't leave a preview of an image that's no longer in the list.
+    if (gone && preview?.src === gone.dataUrl) closePreview();
     setFiles((prev) => prev.filter((f) => f.key !== key));
     setNotice('');
   }
@@ -213,6 +354,7 @@ export default function BackgroundRemovalTool(): JSX.Element {
     setItemErrors([]);
     setNotice('');
     setError('');
+    closePreview();
     if (inputRef.current) inputRef.current.value = '';
   }
 
@@ -226,6 +368,7 @@ export default function BackgroundRemovalTool(): JSX.Element {
     setError('');
     setResults([]);
     setItemErrors([]);
+    closePreview();
 
     try {
       const res = await fetch(ENDPOINT, {
@@ -307,13 +450,28 @@ export default function BackgroundRemovalTool(): JSX.Element {
           <div className={styles.imageGrid}>
             {files.map((f) => (
               <div key={f.key} className={styles.imageCard}>
-                <div className={styles.imageFrame}>
+                <button
+                  type="button"
+                  className={`${styles.imageFrame} ${styles.imageFrameButton}`}
+                  onClick={() =>
+                    setPreview({
+                      name: f.fileName,
+                      src: f.dataUrl,
+                      meta: 'Input PNG',
+                    })
+                  }
+                  aria-label={`Preview ${f.fileName} at full size`}
+                  title="Click to preview at full size"
+                >
                   <img
                     className={styles.imageThumb}
                     src={f.dataUrl}
                     alt={f.fileName}
                   />
-                </div>
+                  <span className={styles.zoomHint} aria-hidden="true">
+                    ⤢
+                  </span>
+                </button>
                 <div className={styles.imageMeta}>
                   <span className={styles.imageName} title={f.fileName}>
                     {f.fileName}
@@ -334,7 +492,7 @@ export default function BackgroundRemovalTool(): JSX.Element {
         </div>
       )}
 
-      <div className={styles.buttonRow}>
+      <div className={styles.fieldGroupCompact}>
         <label className={styles.fieldLabel} htmlFor="bg-removal-format">
           Output format
         </label>
@@ -351,6 +509,9 @@ export default function BackgroundRemovalTool(): JSX.Element {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className={styles.buttonRow}>
         <button
           type="button"
           className="button button--primary button--sm"
@@ -413,13 +574,32 @@ export default function BackgroundRemovalTool(): JSX.Element {
           <div className={styles.imageGrid}>
             {results.map((r, i) => (
               <div key={`${r.id}-${i}`} className={styles.imageCard}>
-                <div className={styles.imageFrameLarge}>
+                <button
+                  type="button"
+                  className={`${styles.imageFrameLarge} ${styles.imageFrameButton}`}
+                  onClick={() =>
+                    setPreview({
+                      name: r.id,
+                      src: r.src,
+                      meta: `Transparent ${FORMATS[r.format].label}`,
+                      download: {
+                        filename: `${r.id}-no-bg.${FORMATS[r.format].ext}`,
+                        mime: FORMATS[r.format].mime,
+                      },
+                    })
+                  }
+                  aria-label={`Preview ${r.id} at full size`}
+                  title="Click to preview at full size"
+                >
                   <img
                     className={styles.imageThumb}
                     src={r.src}
                     alt={`${r.id} without background`}
                   />
-                </div>
+                  <span className={styles.zoomHint} aria-hidden="true">
+                    ⤢
+                  </span>
+                </button>
                 <div className={styles.cardActions}>
                   <span className={styles.resultName} title={r.id}>
                     {r.id}
@@ -442,10 +622,13 @@ export default function BackgroundRemovalTool(): JSX.Element {
             ))}
           </div>
           <p className={styles.metaText}>
-            The checkerboard behind each image is the transparent area.
+            The checkerboard behind each image is the transparent area. Click an
+            image to view it at full size.
           </p>
         </div>
       )}
+
+      <PreviewDialog preview={preview} onClose={closePreview} />
     </div>
   );
 }
